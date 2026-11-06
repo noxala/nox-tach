@@ -18,11 +18,14 @@ under `dev/tests/`. Cross-cutting tests intentionally exercise several owners.
 | Configuration and graph-policy enforcement | [validators.py](../src/nox_tach/validators.py) | [policy and test roles](../dev/tests/nox_tach_test/validators_test.py) |
 | TOML grouping, sorting, reference collapsing | [normalization.py](../src/nox_tach/normalization.py) | [normalization and collapse](../dev/tests/nox_tach_test/normalization_test.py) |
 | Ruff first-party projection | [ruff_config.py](../src/nox_tach/ruff_config.py) | [Ruff config](../dev/tests/nox_tach_test/ruff_config_test.py) |
+| Configuration-derived Markdown rendering | [module_map.py](../src/nox_tach/module_map.py) | [module map](../dev/tests/nox_tach_test/module_map_test.py), [runner](../dev/tests/nox_tach_test/runner_test.py) |
 | File I/O, validation order, CLI | [runner.py](../src/nox_tach/runner.py), [__main__.py](../src/nox_tach/__main__.py) | [runner](../dev/tests/nox_tach_test/runner_test.py), [installed artifacts](../dev/tests/test_package.py) |
 
 Keep orchestration and writes in the runner. Reuse canonical models and pattern
 helpers rather than introducing a second interpretation of policy.
-Consumers own their actual graph/policy files, framework fixtures, and reports.
+Consumers own their actual graph/policy files, package descriptions, and framework
+fixtures. The shared renderer owns the [module-map format](MODULE_MAP.md), while
+the runner owns its file I/O and CLI.
 Synthetic fixtures may use illustrative consumer names without importing consumers.
 
 ## Execution contract
@@ -44,6 +47,11 @@ Preserve this order: a missing boundary must remain a conscious configuration ed
 Normalization must converge byte-for-byte, including timestamps. Keep the existing
 `tach_como extensions` Ruff marker and Eastern-time timestamp until a separately
 reviewed output-format change.
+
+`docs` renders from the same canonical models. It reads all inputs before writing
+only its output; `docs --check` writes nothing. Descriptions are optional policy
+metadata and do not change dependency permissions. Source parsing, normalization,
+and model semantics remain with their existing owners.
 
 ## Supported API
 

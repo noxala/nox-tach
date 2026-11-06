@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Sequence
+import difflib
+import os
 from pathlib import Path
 import shlex
+import sys
 from typing import cast
 
 from nox_tach.config import (
@@ -12,6 +15,7 @@ from nox_tach.config import (
     parse_policy_config,
 )
 from nox_tach.imports import validate_external_lib_whitelists
+from nox_tach.module_map import render_module_map
 from nox_tach.normalization import (
     normalize_policy_text,
     normalize_tach_text,
@@ -40,6 +44,7 @@ from nox_tach.validators import (
 _DEFAULT_TACH_PATH = Path("tach.toml")
 _DEFAULT_POLICY_PATH = Path("nox_tach.toml")
 _DEFAULT_PYPROJECT_PATH = Path("pyproject.toml")
+_DEFAULT_OUTPUT_PATH = Path("docs/generated/MODULE_MAP.md")
 
 
 def validate_top_level_packages(
@@ -262,8 +267,71 @@ def run(
     )
 
 
+def run_docs(
+    *,
+    check: bool,
+    tach_path: Path = _DEFAULT_TACH_PATH,
+    policy_path: Path = _DEFAULT_POLICY_PATH,
+    pyproject_path: Path = _DEFAULT_PYPROJECT_PATH,
+    output_path: Path = _DEFAULT_OUTPUT_PATH,
+) -> None:
+    repo_root = tach_path.resolve().parent
+    output_path = (repo_root / output_path).resolve()
+    inputs = (tach_path, policy_path, pyproject_path)
+    if output_path in {path.resolve() for path in inputs}:
+        raise ValueError("The module-map output must not overwrite an input file")
+
+    _, tach, _, config = _load_configs(tach_path=tach_path, policy_path=policy_path)
+    expected = render_module_map(
+        tach=tach,
+        config=config,
+        pyproject_text=pyproject_path.read_text(encoding="utf-8"),
+        input_names=tuple(
+            os.path.relpath(path.resolve(), repo_root) for path in inputs
+        ),
+    )
+    if not check:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(expected, encoding="utf-8")
+        sys.stdout.write(f"Wrote {output_path}\n")
+        return
+
+    actual = output_path.read_text(encoding="utf-8") if output_path.is_file() else ""
+    if actual == expected:
+        return
+    diff = difflib.unified_diff(
+        actual.splitlines(),
+        expected.splitlines(),
+        fromfile=str(output_path),
+        tofile=f"{output_path} (generated)",
+        lineterm="",
+    )
+    sys.stdout.write("\n".join(diff) + "\n")
+    command = shlex.join(
+        [
+            "nox-tach",
+            "docs",
+            "--tach-path",
+            str(tach_path),
+            "--policy-path",
+            str(policy_path),
+            "--pyproject-path",
+            str(pyproject_path),
+            "--output",
+            str(output_path),
+        ]
+    )
+    raise RuntimeError(f"Generated module map is missing or stale. Run `{command}`.")
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Validate or fix Tach policy.")
+    parser = argparse.ArgumentParser(
+        description="Validate or fix Tach policy.",
+        epilog=(
+            "Generate a module map with 'nox-tach docs'; "
+            "use 'nox-tach docs --help' for options."
+        ),
+    )
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument(
         "--fix",
@@ -275,6 +343,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Validate Tach-managed configuration without modifying files.",
     )
+    _add_config_arguments(parser)
+    return parser
+
+
+def _add_config_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--tach-path",
         type=Path,
@@ -293,11 +366,36 @@ def build_parser() -> argparse.ArgumentParser:
         default=_DEFAULT_PYPROJECT_PATH,
         help="Path to pyproject.toml.",
     )
+
+
+def _build_docs_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="nox-tach docs", description="Generate or check a Markdown module map."
+    )
+    parser.add_argument("--check", action="store_true", help="Check without writing.")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=_DEFAULT_OUTPUT_PATH,
+        help="Output path relative to the Tach file's parent (or an absolute path).",
+    )
+    _add_config_arguments(parser)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> None:
-    args = build_parser().parse_args(argv)
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == "docs":
+        args = _build_docs_parser().parse_args(arguments[1:])
+        run_docs(
+            check=cast(bool, args.check),
+            tach_path=cast(Path, args.tach_path),
+            policy_path=cast(Path, args.policy_path),
+            pyproject_path=cast(Path, args.pyproject_path),
+            output_path=cast(Path, args.output),
+        )
+        return
+    args = build_parser().parse_args(arguments)
     run(
         fix=cast(bool, args.fix),
         tach_path=cast(Path, args.tach_path),

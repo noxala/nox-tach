@@ -94,7 +94,7 @@ def wheels(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
             )
             metadata = Parser().parsestr(archive.read(metadata_path).decode())
             assert metadata["Name"] == "nox-tach"
-            assert metadata["Version"] == "0.2.0"
+            assert metadata["Version"] == "0.3.0"
             assert set(metadata["Requires-Python"].split(",")) == {">=3.14.10", "<3.15"}
             assert metadata.get_all("Requires-Dist", []) == []
     return result
@@ -111,12 +111,14 @@ def _consumer(root: Path, names: tuple[str, str, str]) -> tuple[Path, Path, Path
         encoding="utf-8",
     )
     policy.write_text(
-        '[[modules]]\npath = "pkg"\ndependency_whitelist = []\n'
+        '[[modules]]\npath = "pkg"\ndescription = "Consumer package."\n'
+        "dependency_whitelist = []\n"
         "external_lib_whitelist = []\ncollapse_references = true\n"
         "collapse_references_except = []\n",
         encoding="utf-8",
     )
     pyproject.write_text(
+        '[project]\nname = "sample-consumer"\n'
         '[tool.ruff.lint.isort]\nknown-first-party = ["stale"]\n',
         encoding="utf-8",
     )
@@ -170,6 +172,27 @@ def test_installed_artifacts(
     _run([cli, "--fix", *options], cwd=tmp_path)
     normalized = tuple(path.read_bytes() for path in files)
     _run([python, "-I", "-m", "nox_tach", "--fix", *options], cwd=tmp_path)
+    assert tuple(path.read_bytes() for path in files) == normalized
+
+    output = files[0].parent / "reference/map.md"
+    docs_options = [*options, "--output", "reference/map.md"]
+    docs_failure = _run(
+        [cli, "docs", "--check", *docs_options], cwd=tmp_path, success=False
+    )
+    assert "module map is missing or stale" in docs_failure.stderr
+    assert not output.parent.exists()
+    _run([python, "-I", "-m", "nox_tach", "docs", *docs_options], cwd=tmp_path)
+    rendered = output.read_bytes()
+    assert rendered.startswith(b"# Generated sample-consumer Module Map\n")
+    assert b"Consumer package." in rendered
+    _run([cli, "docs", "--check", *docs_options], cwd=tmp_path)
+    output.write_text("stale\n", encoding="utf-8")
+    _run(
+        [python, "-I", "-m", "nox_tach", "docs", "--check", *docs_options],
+        cwd=tmp_path,
+        success=False,
+    )
+    assert output.read_text() == "stale\n"
     assert tuple(path.read_bytes() for path in files) == normalized
     _run([python, "-I", "-m", "nox_tach", "--check", *options], cwd=tmp_path)
     assert tuple(path.read_bytes() for path in files) == normalized
@@ -225,6 +248,7 @@ def test_installed_artifacts(
         'assert policy == parse_policy_config(Path("nox_tach.toml").read_text())\n'
         "module: ModulePolicy = policy.modules[0]\n"
         'assert module.path == "pkg"\n'
+        'assert module.description == "Consumer package."\n'
         "assert module.collapse_references is True\n"
         "assert module.collapse_references_except == frozenset()\n"
         'exception_policy: ModulePolicy = ModulePolicy(path="pkg", '

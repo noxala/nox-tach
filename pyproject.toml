@@ -1,6 +1,6 @@
 [project]
 name = "nox-tach"
-version = "0.2.0"
+version = "0.3.0"
 description = "Shared Tach policy tooling"
 readme = "README.md"
 requires-python = ">=3.14.10,<3.15"

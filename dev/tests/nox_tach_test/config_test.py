@@ -78,6 +78,28 @@ parents_whitelist = []
     )
 
 
+@pytest.mark.parametrize("value", ["1", "false", '""', '"  "'])
+def test_description_requires_nonblank_text(value: str) -> None:
+    with pytest.raises(ValueError, match="description must be a non-blank string"):
+        parse_policy_config(f'[[modules]]\npath = "pkg"\ndescription = {value}\n')
+
+
+def test_description_is_optional_documentation_metadata() -> None:
+    assert parse_policy_config(
+        '[[modules]]\npath = "pkg"\ndescription = "  Package purpose.  "\n'
+    ).modules == (ModulePolicy(path="pkg", description="Package purpose."),)
+    assert parse_policy_config('[[modules]]\npath = "pkg"\n').modules == (
+        ModulePolicy(path="pkg"),
+    )
+
+
+def test_description_rejects_multiline_module_like_text() -> None:
+    with pytest.raises(ValueError, match="description must be a single line"):
+        parse_policy_config(
+            '[[modules]]\npath = "pkg"\ndescription = """Purpose.\n[[modules]]\n"""\n'
+        )
+
+
 @pytest.mark.parametrize(
     ("text", "expected_message"),
     [

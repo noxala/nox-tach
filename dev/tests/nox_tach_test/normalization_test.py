@@ -15,6 +15,20 @@ from nox_tach.tach_config import parse_tach_config
 from tests._helpers import assert_raises_msg, tach_text
 
 
+def test_normalization_preserves_module_description_metadata() -> None:
+    text = (
+        '[[modules]]\npath = "zpkg"\ndescription = "Package | purpose."\n'
+        'dependency_whitelist = ["zpkg", "apkg"]\n'
+        '\n[[modules]]\npath = "apkg"\ndescription = "Foundation."\n'
+    )
+    expected = parse_policy_config(text)
+    normalized = normalize_policy_text(text)
+    assert normalize_policy_text(normalized) == normalized
+    assert {spec.path: spec for spec in parse_policy_config(normalized).modules} == {
+        spec.path: spec for spec in expected.modules
+    }
+
+
 def test_normalize_tach_text_adds_stable_section_headers() -> None:
     text = """\
 source_roots = ["."]

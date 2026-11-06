@@ -28,6 +28,10 @@ path = "nox_tach.imports"
 depends_on = ["nox_tach.config", "nox_tach.tach_config"]
 
 [[modules]]
+path = "nox_tach.module_map"
+depends_on = ["nox_tach.config", "nox_tach.tach_config"]
+
+[[modules]]
 path = "nox_tach.normalization"
 depends_on = ["nox_tach.config", "nox_tach.patterns", "nox_tach.tach_config"]
 
@@ -37,7 +41,7 @@ depends_on = ["nox_tach.tach_config"]
 
 [[modules]]
 path = "nox_tach.runner"
-depends_on = ["nox_tach.config", "nox_tach.imports", "nox_tach.normalization", "nox_tach.ruff_config", "nox_tach.tach_config", "nox_tach.validators"]
+depends_on = ["nox_tach.config", "nox_tach.imports", "nox_tach.module_map", "nox_tach.normalization", "nox_tach.ruff_config", "nox_tach.tach_config", "nox_tach.validators"]
 
 [[modules]]
 path = "nox_tach.tach_config"
@@ -69,6 +73,10 @@ depends_on = ["nox_tach.config", "tests._helpers"]
 [[modules]]
 path = "tests.nox_tach_test.imports_test"
 depends_on = ["nox_tach.imports"]
+
+[[modules]]
+path = "tests.nox_tach_test.module_map_test"
+depends_on = ["nox_tach.config", "nox_tach.module_map", "nox_tach.tach_config"]
 
 [[modules]]
 path = "tests.nox_tach_test.normalization_test"

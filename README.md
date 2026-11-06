@@ -3,15 +3,16 @@
 Architectural policy and configuration normalization for Python projects using
 [upstream Tach](https://github.com/gauge-sh/tach). Tach checks actual imports;
 nox-tach adds inherited restrictions, test dependency rules, and deterministic
-configuration maintenance. The installed engine uses only Python's standard library.
+configuration maintenance. It also generates readable Markdown module maps.
+The installed engine uses only Python's standard library.
 
 ## Install
 
 Install the wheel from a [published release](https://github.com/noxala/nox-tach/releases),
-for example v0.2.0:
+for example v0.3.0:
 
 ```bash
-python -m pip install 'nox-tach @ https://github.com/noxala/nox-tach/releases/download/v0.2.0/nox_tach-0.2.0-py3-none-any.whl'
+python -m pip install 'nox-tach @ https://github.com/noxala/nox-tach/releases/download/v0.3.0/nox_tach-0.3.0-py3-none-any.whl'
 ```
 
 Public downloads require no cross-repository credentials. Record the release URL
@@ -79,3 +80,11 @@ repository-root layout.
 For package changes, start with [AGENTS.md](AGENTS.md).
 The [architecture guide](docs/ARCHITECTURE.md) maps implementation/tests and the
 supported typed API; [development](docs/DEVELOPMENT.md) covers verification.
+
+## Module maps
+
+Add a `description` to each top-level module's policy block, then run
+`uv run nox-tach docs`. Use `uv run nox-tach docs --check` in CI to detect drift.
+The [module-map guide](docs/MODULE_MAP.md) describes inputs, output paths, and
+adopting the shared generator. See this repository's
+[generated map](docs/generated/MODULE_MAP.md).

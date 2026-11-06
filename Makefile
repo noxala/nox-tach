@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := ci
 
-.PHONY: ci precommit ruff standards-check test docs-check policy-check build
+.PHONY: ci precommit ruff standards-check test docs docs-check policy-check build
 
 standards-check:
 	uv run --locked nox-py-standards check
@@ -16,8 +16,12 @@ precommit:
 test:
 	uv run --locked pytest
 
+docs: standards-check
+	uv run --locked nox-tach docs
+
 docs-check:
 	uv run --locked nox-docs-check
+	uv run --locked nox-tach docs --check
 
 policy-check:
 	uv run --locked tach check
