@@ -131,6 +131,10 @@ consumer directories without `PYTHONPATH`. Test selection by Tach impact analysi
 is disabled so the complete suite always runs. No database or consumer checkout
 is needed.
 
+CI also performs a fresh pip Git install of the exact PR/push revision with no
+dependency cache. Its job-scoped credential helper uses this repository's token;
+COMO adoption still needs its own approved cross-repository read credential.
+
 Complete Ruff/Pyright settings and manual Ruff approval remain visible in
 [pyproject.toml](pyproject.toml). To update shared standards, update the exact
 `nox-python-standards` development pin and lock, install it, explicitly run

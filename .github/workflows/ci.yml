@@ -43,3 +43,25 @@ jobs:
 
       - name: Check standards, policy, formatting, types, tests, and installed artifacts
         run: make ci
+
+      - name: Prove a clean private Git installation of this revision
+        env:
+          PACKAGE_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          GIT_TERMINAL_PROMPT: "0"
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: credential.https://github.com.helper
+          GIT_CONFIG_VALUE_0: >-
+            !f() { if [ "$1" = get ]; then
+            printf '%s\n' 'username=x-access-token' "password=$GH_TOKEN";
+            fi; }; f
+        shell: bash
+        run: |
+          install_root=$(mktemp -d)
+          trap 'rm -rf "$install_root"' EXIT
+          uv venv --seed --python 3.14.10 "$install_root/venv"
+          "$install_root/venv/bin/python" -m pip install --no-cache-dir \
+            "nox-tach @ git+https://github.com/noxala/nox-tach.git@$PACKAGE_REF"
+          cd "$install_root"
+          env -u PYTHONPATH "$install_root/venv/bin/python" -I -m nox_tach --help
+          env -u PYTHONPATH "$install_root/venv/bin/nox-tach" --help

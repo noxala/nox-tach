@@ -49,6 +49,10 @@ The rollout is sequential:
    snapshot before removing code, then review only extraction-related graph changes.
 4. Consider Milan adoption separately.
 
+CI verifies a clean pip Git install of each PR/push SHA, including the merged
+revision on `master`. It uses a job-scoped credential helper and this repository's
+read token; credentials are never embedded in package references.
+
 A repository-scoped Actions token cannot fetch another private repository. If no
 approved cross-repository credential is available, keep COMO's current engine until
 that prerequisite is provisioned. Do not change visibility or bypass policy checks.
