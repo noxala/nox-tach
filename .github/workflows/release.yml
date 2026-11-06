@@ -24,7 +24,7 @@ env:
 jobs:
   release-assets:
     name: Build and attach release assets
-    runs-on: self-hosted
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: write
