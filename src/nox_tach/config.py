@@ -31,7 +31,7 @@ class ModulePolicy:
     test_infra: bool = False
     test_mirror_component_suffix: str | None = None
     collapse_references: bool = False
-    collapse_references_blacklist: frozenset[str] = frozenset()
+    collapse_references_except: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -272,7 +272,7 @@ def _parse_modules(value: object) -> tuple[ModulePolicy, ...]:
         "test_infra",
         "test_mirror_component_suffix",
         "collapse_references",
-        "collapse_references_blacklist",
+        "collapse_references_except",
     }
 
     for index, raw_spec in enumerate(cast(list[object], value)):
@@ -360,16 +360,16 @@ def _parse_modules(value: object) -> tuple[ModulePolicy, ...]:
             raise ValueError(f"{field}.collapse_references must be a boolean")
         collapse_references = collapse_references_obj
 
-        collapse_references_blacklist = _optional_string_list(
+        collapse_references_except = _optional_string_list(
             spec,
-            key="collapse_references_blacklist",
+            key="collapse_references_except",
             field=field,
         )
-        if collapse_references_blacklist is None:
-            collapse_references_blacklist = ()
+        if collapse_references_except is None:
+            collapse_references_except = ()
         elif not collapse_references:
             raise ValueError(
-                f"{field}.collapse_references_blacklist requires "
+                f"{field}.collapse_references_except requires "
                 "collapse_references = true"
             )
 
@@ -390,10 +390,10 @@ def _parse_modules(value: object) -> tuple[ModulePolicy, ...]:
             for external_lib in external_lib_whitelist:
                 _validate_module_name(external_lib)
 
-        for consumer in collapse_references_blacklist:
+        for consumer in collapse_references_except:
             _validate_tach_module_pattern(
                 consumer,
-                field=f"{field}.collapse_references_blacklist",
+                field=f"{field}.collapse_references_except",
             )
 
         specs.append(
@@ -422,7 +422,7 @@ def _parse_modules(value: object) -> tuple[ModulePolicy, ...]:
                 test_infra=test_infra,
                 test_mirror_component_suffix=test_mirror_component_suffix,
                 collapse_references=collapse_references,
-                collapse_references_blacklist=frozenset(collapse_references_blacklist),
+                collapse_references_except=frozenset(collapse_references_except),
             )
         )
 

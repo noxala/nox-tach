@@ -274,7 +274,7 @@ _TACH_PATTERN_REFERENCE_FIELDS = (
     "dependency_whitelist",
     "dependency_blacklist",
     "parents_whitelist",
-    "collapse_references_blacklist",
+    "collapse_references_except",
 )
 
 
@@ -309,7 +309,7 @@ def validate_tach_pattern_references_are_tach_modules(
     raise RuntimeError(
         "nox-tach Tach-pattern configuration violated. Every module reference in "
         "dependency_whitelist, dependency_blacklist, parents_whitelist, and "
-        "collapse_references_blacklist must be rooted at an exact [[modules]] path "
+        "collapse_references_except must be rooted at an exact [[modules]] path "
         "in tach.toml:\n" + "\n".join(rendered)
     )
 

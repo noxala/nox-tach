@@ -182,7 +182,7 @@ def _module_spec(
     parents_whitelist: frozenset[str] | None = None,
     dev_only: bool | None = None,
     collapse_references: bool = False,
-    collapse_references_blacklist: frozenset[str] = frozenset(),
+    collapse_references_except: frozenset[str] = frozenset(),
 ) -> ModulePolicy:
     return ModulePolicy(
         path=path,
@@ -191,7 +191,7 @@ def _module_spec(
         parents_whitelist=parents_whitelist,
         dev_only=dev_only,
         collapse_references=collapse_references,
-        collapse_references_blacklist=collapse_references_blacklist,
+        collapse_references_except=collapse_references_except,
     )
 
 
@@ -462,6 +462,20 @@ def test_policy_paths_and_pattern_roots_must_be_exact_tach_modules() -> None:
                 ),
             ),
         )
+
+
+def test_collapse_exceptions_must_reference_exact_tach_module_roots() -> None:
+    tach = parse_tach_config(tach_text(("core", []), ("client", [])))
+    specs = (
+        _module_spec(
+            "core",
+            collapse_references=True,
+            collapse_references_except=frozenset({"missing.**"}),
+        ),
+    )
+
+    with assert_raises_msg(RuntimeError, "'core'.collapse_references_except entry"):
+        validate_tach_pattern_references_are_tach_modules(tach=tach, module_specs=specs)
 
 
 def test_tach_policy_configuration_runs_all_configuration_checks() -> None:

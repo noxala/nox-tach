@@ -36,7 +36,7 @@ needs its own exact declaration. Ambiguous resolution through multiple roots fai
 | `test_mirror_component_suffix` | Required naming rule for a test root; may be empty |
 | `test_infra` | True-only marker for reusable support below a test root |
 | `collapse_references` | Canonicalize external consumers' references to this subtree |
-| `collapse_references_blacklist` | Consumer patterns whose references stay explicit |
+| `collapse_references_except` | Keep matching consumers' outgoing references explicit when collapsing this subtree |
 
 Patterns mean exact module (`pkg`), direct children (`pkg.*`), or recursive
 descendants (`pkg.**`). Recursive descendants do not include the root.
@@ -135,8 +135,26 @@ before dev. Each group is alphabetical. Comments outside managed regions survive
 Collapsing is opt-in and affects consumers outside the selected subtree.
 A reference to `core.parser` can become `core.**`; an exact `core` reference
 remains separate. Internal dependencies stay explicit.
-`collapse_references_blacklist` exempts matching consumers and requires enabled
-collapsing. The removed `collapse_references_exclude` key is rejected.
+`collapse_references_except` exempts matching consumers and requires enabled
+collapsing. For example:
+
+```toml
+[[modules]]
+path = "core"
+collapse_references = true
+collapse_references_except = ["test.core_test.lib"]
+```
+
+Other external consumers' references to `core.lib` can collapse to `core.**`.
+The outgoing references declared by `test.core_test.lib` stay explicit. Entries
+identify consumers, rather than dependency targets; normal exact, `.*`, and `.**`
+pattern semantics apply.
+
+Starting with 0.2.0, rename `collapse_references_blacklist` to
+`collapse_references_except` in TOML and in Python `ModulePolicy` construction or
+attribute access. The values and collapse behavior stay the same. Both former keys,
+`collapse_references_blacklist` and `collapse_references_exclude`, are rejected;
+there are no compatibility aliases.
 
 Ruff's `known-first-party` is generated from declared top-level Tach roots.
 Manually maintained `known-third-party` entries take precedence.

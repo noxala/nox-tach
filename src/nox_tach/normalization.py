@@ -27,7 +27,7 @@ _LIST_FIELD_NAMES = (
     "dependency_blacklist",
     "parents_whitelist",
     "external_lib_whitelist",
-    "collapse_references_blacklist",
+    "collapse_references_except",
 )
 _TACH_ZERO_DEPENDENCY_PRODUCTION_HEADER = (
     "# --- Production modules: no first-party dependencies ---"
@@ -59,7 +59,7 @@ def collapse_references_for_spec(
         return dependencies
     if module_matches_tach_patterns(
         module_path,
-        spec.collapse_references_blacklist,
+        spec.collapse_references_except,
     ):
         return dependencies
 
