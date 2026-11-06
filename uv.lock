@@ -121,14 +121,14 @@ wheels = [
 
 [[package]]
 name = "nox-python-standards"
-version = "0.2.1"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "tomlkit" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/af/74/bde59f0bc3eaf8cc2ec81fb0645b20bf9ceec113dffde7b9f26ef1a7a25f/nox_python_standards-0.2.1.tar.gz", hash = "sha256:435f0ca7167af24ea38055d4475c151196aad899c02a547c8092df2dc32e69ca", size = 19300, upload-time = "2026-11-06T01:22:46.727Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/df/5d/4f82d3a6dd6273fa535cbbce59b1b6c227ced726a07e44c05f14e755476b/nox_python_standards-0.3.0.tar.gz", hash = "sha256:d6e1c527d2a328d82ff57b4b508e6ee152725a42f821fa45d390c30a741954eb", size = 29485, upload-time = "2026-11-06T06:04:42.928Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4c/e9/90e40cec9f1e77f3c973feefc9b9d32103e8e85495c7e72c94d43ae2a413/nox_python_standards-0.2.1-py3-none-any.whl", hash = "sha256:50faa328b7606abae7d9dd4c786dcc810dd2ea81e0ff33920c0818bd3d0c87e6", size = 15185, upload-time = "2026-11-06T01:22:45.427Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/b2/635f0a13dbd3db0955c0dfaccfae39a54f80e8f0cfcc98513749018876a9/nox_python_standards-0.3.0-py3-none-any.whl", hash = "sha256:a4b0291e5361c599fa82386766fca9d1264742c27f65fe26af02066c84f8a54c", size = 22840, upload-time = "2026-11-06T06:04:41.487Z" },
 ]
 
 [[package]]
@@ -150,7 +150,7 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "nox-python-standards", specifier = "==0.2.1" },
+    { name = "nox-python-standards", specifier = "==0.3.0" },
     { name = "pre-commit", specifier = ">=4.6.0" },
     { name = "pyright", specifier = "==1.1.411" },
     { name = "pytest", specifier = "==9.0.3" },

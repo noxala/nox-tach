@@ -17,7 +17,7 @@ test:
 	uv run --locked pytest
 
 docs-check:
-	uv run --locked pytest dev/tests/test_guidance.py
+	uv run --locked nox-docs-check
 
 policy-check:
 	uv run --locked tach check

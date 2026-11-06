@@ -21,7 +21,7 @@ include = ["/src", "/dev", "/README.md", "/docs", "/pyproject.toml"]
 
 [dependency-groups]
 dev = [
-    "nox-python-standards==0.2.1",
+    "nox-python-standards==0.3.0",
     "ruff==0.15.14",
     "pyright==1.1.411",
     "pre-commit>=4.6.0",
@@ -40,6 +40,14 @@ dependency-group = "dev"
 
 [tool.nox-python-standards.ruff]
 authorized_version = "v0.15.14"
+
+[tool.nox-python-standards.docs]
+include = ["AGENTS.md", "README.md", "docs/**/*.md", ".noxala/*.md"]
+required = ["AGENTS.md"]
+
+[[tool.nox-python-standards.docs.budgets]]
+include = ["AGENTS.md"]
+max-words = 450
 
 # Shared values are copied here by explicit nox-py-standards sync.
 [tool.pyright]

@@ -92,8 +92,11 @@ or PyPI publishing is needed. Consumer migration history is in
 
 Keep [AGENTS.md](../AGENTS.md) as a short router, with detail owned by the relevant
 guide. It has a 450-word budget, measured by whitespace splitting rather than a
-model-specific tokenizer. Documentation checks validate local Markdown links and
-heading anchors, including the router's destinations. Use inline links for these
+model-specific tokenizer. `make docs-check` runs the installed `nox-docs-check`;
+document paths and the budget are declared in `[tool.nox-python-standards.docs]`
+in `pyproject.toml`. The standards package owns the checker and its regression tests.
+It validates local Markdown links and heading anchors, including the router's
+destinations. Use inline links for these
 paths and ordinary Markdown headings. Keep exact versions and graph edges in
 their machine-readable authorities. Review one representative task through each
 changed route to catch missing context that link checks cannot detect.
