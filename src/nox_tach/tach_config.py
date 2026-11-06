@@ -141,7 +141,9 @@ def _string_list(value: object, *, field: str) -> tuple[str, ...]:
 def parse_tach_config(text: str) -> TachConfig:
     parsed = cast(dict[str, object], tomllib.loads(text))
 
-    source_roots_obj = parsed.get("source_roots", ["."])
+    if "source_roots" not in parsed:
+        raise ValueError("tach.toml must explicitly declare source_roots")
+    source_roots_obj = parsed["source_roots"]
     source_roots = tuple(
         Path(value)
         for value in _string_list(source_roots_obj, field="tach.toml source_roots")

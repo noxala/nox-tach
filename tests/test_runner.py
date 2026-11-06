@@ -67,6 +67,27 @@ depends_on = []
     return tach_path, policy_path, _write_pyproject(tmp_path)
 
 
+@pytest.mark.parametrize("fix", [False, True], ids=["check", "fix"])
+def test_missing_source_roots_rejects_before_writing(tmp_path: Path, fix: bool) -> None:
+    paths = _write_runner_fixture(tmp_path)
+    tach_path, policy_path, pyproject_path = paths
+    tach_path.write_text(
+        tach_path.read_text().replace('source_roots = ["src"]\n', ""),
+        encoding="utf-8",
+    )
+    before = tuple(path.read_bytes() for path in paths)
+
+    with pytest.raises(ValueError, match="must explicitly declare source_roots"):
+        runner.run(
+            fix=fix,
+            tach_path=tach_path,
+            policy_path=policy_path,
+            pyproject_path=pyproject_path,
+        )
+
+    assert tuple(path.read_bytes() for path in paths) == before
+
+
 def test_top_level_package_validation_uses_configured_source_root(
     tmp_path: Path,
 ) -> None:
