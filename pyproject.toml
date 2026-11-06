@@ -2,8 +2,22 @@
 name = "nox-tach"
 version = "0.1.0"
 description = "Shared Tach policy tooling"
+readme = "README.md"
 requires-python = ">=3.14.10,<3.15"
 dependencies = []
+
+[project.scripts]
+nox-tach = "nox_tach.runner:main"
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nox_tach"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/README.md", "/docs", "/pyproject.toml"]
 
 [dependency-groups]
 dev = [
@@ -11,15 +25,17 @@ dev = [
     "ruff==0.15.14",
     "pyright==1.1.411",
     "pre-commit>=4.6.0",
+    "pytest==9.0.3",
+    "tach>=0.35.0",
 ]
 
 [tool.uv]
 required-version = ">=0.13.6"
 default-groups = ["dev"]
-package = false
+package = true
 
 [tool.nox-python-standards]
-sources = ["."]
+sources = ["src", "tests"]
 dependency-group = "dev"
 
 [tool.nox-python-standards.ruff]
@@ -29,7 +45,7 @@ authorized_version = "v0.15.14"
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
-include = ["."]
+include = ["src", "tests"]
 exclude = [".venv", "build", "dist", "**/__pycache__"]
 pythonVersion = "3.14"
 typeCheckingMode = "strict"
@@ -58,6 +74,10 @@ extend-ignore = ["RET504", "SIM102", "SIM103", "SIM108", "SIM110"]
 combine-as-imports = true
 force-sort-within-sections = true
 required-imports = ["from __future__ import annotations"]
+# Generated from the top-level module roots in tach.toml by tach_como extensions on 2026-11-05 20:59:30 EST
+known-first-party = [
+    "nox_tach",
+]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -65,3 +85,8 @@ indent-style = "space"
 line-ending = "lf"
 skip-magic-trailing-comma = false
 docstring-code-format = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-p", "no:tach"]
+filterwarnings = ["error"]

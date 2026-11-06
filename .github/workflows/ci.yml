@@ -41,5 +41,5 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
-      - name: Check standards, formatting, lint, and types
+      - name: Check standards, policy, formatting, types, tests, and installed artifacts
         run: make ci
