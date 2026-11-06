@@ -12,6 +12,14 @@ repos:
         always_run: true
         stages: [pre-commit, pre-push]
 
+      - id: repository-guidance
+        name: Repository guidance drift
+        entry: uv run --locked nox-docs-check
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, pre-push]
+
       - id: ruff
         name: Ruff format and fix
         entry: >-
