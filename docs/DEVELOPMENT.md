@@ -14,13 +14,14 @@ make standards-check
 ```
 
 Make targets invoke the project tools through `uv run --locked`; they do not require
-activating the environment.
+activating the environment. Tests live under `dev/tests`; `src` and `dev` are
+separate source roots for native Tach.
 
 ## Verification
 
 | Task | Command |
 | --- | --- |
-| Focused iteration | `uv run --locked pytest tests/test_runner.py` (choose tests from the [ownership map](ARCHITECTURE.md#ownership-map)) |
+| Focused iteration | `uv run --locked pytest dev/tests/nox_tach_test/runner_test.py` (choose tests from the [ownership map](ARCHITECTURE.md#ownership-map)) |
 | Agent guidance and documentation | `make docs-check` |
 | Python formatting/fixes | `make ruff`, repeated until a full pass makes no edits |
 | Complete PR verification | `make ci` |
@@ -30,7 +31,13 @@ activating the environment.
 guidance, formatting, lint, typing, policy, and the complete test suite.
 Tach impact-based test selection is disabled in project pytest settings.
 
-[Package tests](../tests/test_package.py) build a wheel and sdist, rebuild the
+In repository branch protection or rulesets, require the **`ci-gate`** check.
+The final job in [CI](../.github/workflows/ci.yml) runs even if its dependencies
+fail or are skipped, and passes only when every dependency succeeds. It covers
+`make ci` and the clean private Git install. Add any future CI jobs to its `needs`
+list; keep this name stable.
+
+[Package tests](../dev/tests/test_package.py) build a wheel and sdist, rebuild the
 wheel from the sdist, and install both wheels non-editably in clean environments.
 They run both CLI entry points from unrelated consumer directories, verify
 non-mutating failures and repeatable fixes, and type-check the supported API.

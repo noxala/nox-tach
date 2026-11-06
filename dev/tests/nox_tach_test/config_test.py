@@ -1,4 +1,4 @@
-# tests/test_policy_config.py
+# dev/tests/nox_tach_test/config_test.py
 from __future__ import annotations
 
 import pytest
