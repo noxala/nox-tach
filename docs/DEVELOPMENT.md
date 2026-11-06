@@ -31,6 +31,9 @@ separate source roots for native Tach.
 guidance, formatting, lint, typing, policy, and the complete test suite.
 Tach impact-based test selection is disabled in project pytest settings.
 
+CI and release jobs use GitHub-hosted Ubuntu runners. Public pull requests execute
+in GitHub-managed virtual machines.
+
 In repository branch protection or rulesets, require the **`ci-gate`** check.
 The final job in [CI](../.github/workflows/ci.yml) runs even if its dependencies
 fail or are skipped, and passes only when every dependency succeeds. It covers
