@@ -27,7 +27,6 @@ _LIST_FIELD_NAMES = (
     "dependency_blacklist",
     "parents_whitelist",
     "external_lib_whitelist",
-    "collapse_references_exclude",
     "collapse_references_blacklist",
 )
 _TACH_ZERO_DEPENDENCY_PRODUCTION_HEADER = (

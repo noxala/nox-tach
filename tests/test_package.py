@@ -183,6 +183,17 @@ def test_installed_artifacts(
     )
     _run([cli, "--check", *options], cwd=tmp_path, success=False)
 
+    files[1].write_text(
+        '[[modules]]\npath = "pkg"\ncollapse_references = true\n'
+        "collapse_references_exclude = []\n",
+        encoding="utf-8",
+    )
+    invalid = tuple(path.read_bytes() for path in files)
+    for mode in ("--check", "--fix"):
+        failure = _run([cli, mode, *options], cwd=tmp_path, success=False)
+        assert "unknown field(s): 'collapse_references_exclude'" in failure.stderr
+        assert tuple(path.read_bytes() for path in files) == invalid
+
     defaults = tmp_path / "defaults"
     _consumer(defaults, ("tach.toml", "nox_tach.toml", "pyproject.toml"))
     _run([python, "-I", "-m", "nox_tach", "--fix"], cwd=defaults)
