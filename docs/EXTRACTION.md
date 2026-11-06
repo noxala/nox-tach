@@ -1,5 +1,9 @@
 # Extraction provenance and rollout
 
+This is historical migration evidence, not the routine contributor entry point.
+Use [AGENTS.md](../AGENTS.md) for task routing and
+[DEVELOPMENT.md](DEVELOPMENT.md) for current verification and release procedures.
+
 The initial engine and eight generic test modules were extracted from COMO commit
 `f5b4adda58182eb142049d6797e125be606cd452` (`master`, inspected November 5, 2026),
 from `tools/tach_como_extensions/` and
@@ -31,6 +35,11 @@ timezone rules remain unchanged. Runtime dependencies remain empty. The initial
 extraction preserved model fields, TOML keys, exception categories, validation order,
 and normalization behavior. Subsequent cleanup makes `collapse_references_blacklist`
 the sole accepted key for consumers whose references must remain explicit.
+
+The subsequent guidance review deliberately requires explicit `source_roots`.
+Unlike the extraction baseline's implicit `["."]`, current consumers must declare
+`source_roots = ["."]` or their actual source directories. See
+[current policy](POLICY.md#configuration-and-source-roots).
 
 Validation of the initial extraction ran the original 95 generic cases against
 the original engine and all 97 cases (95 moved plus two installed-artifact cases)

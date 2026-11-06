@@ -172,6 +172,15 @@ def test_installed_artifacts(
     _run([python, "-I", "-m", "nox_tach", "--check", *options], cwd=tmp_path)
     assert tuple(path.read_bytes() for path in files) == normalized
 
+    files[0].write_bytes(normalized[0].replace(b'source_roots = ["src"]\n', b""))
+    invalid = tuple(path.read_bytes() for path in files)
+    for entrypoint in ([cli], [python, "-I", "-m", "nox_tach"]):
+        for mode in ("--check", "--fix"):
+            failure = _run([*entrypoint, mode, *options], cwd=tmp_path, success=False)
+            assert "must explicitly declare source_roots" in failure.stderr
+            assert tuple(path.read_bytes() for path in files) == invalid
+    files[0].write_bytes(normalized[0])
+
     for modes in ([], ["--check", "--fix"]):
         _run([cli, *modes, *options], cwd=tmp_path, success=False)
     files[1].write_text('[[modules]]\npath = "undeclared"\n', encoding="utf-8")

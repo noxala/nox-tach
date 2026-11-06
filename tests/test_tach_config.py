@@ -31,19 +31,21 @@ def test_parse_tach_config_reads_multiple_source_roots() -> None:
     assert config.module_paths == frozenset({"pkg"})
 
 
-def test_parse_tach_config_defaults_source_root_to_repository_root() -> None:
-    config = parse_tach_config(
-        """\
-exact = true
-root_module = "forbid"
+def test_parse_tach_config_rejects_implicit_source_root() -> None:
+    text = _tach_text().replace('source_roots = ["."]\n', "")
+    with pytest.raises(ValueError, match="must explicitly declare source_roots"):
+        parse_tach_config(text)
 
-[[modules]]
-path = "pkg"
-depends_on = []
-"""
-    )
 
+def test_parse_tach_config_accepts_explicit_repository_source_root() -> None:
+    config = parse_tach_config(_tach_text())
     assert config.source_roots == (Path("."),)
+
+
+@pytest.mark.parametrize("roots", ["[]", '"src"', '[""]', '["src", "src"]'])
+def test_parse_tach_config_rejects_invalid_source_roots(roots: str) -> None:
+    with pytest.raises(ValueError, match="source_roots"):
+        parse_tach_config(_tach_text(source_roots=roots))
 
 
 def test_source_path_for_module_resolves_directory_under_source_root(

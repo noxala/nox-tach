@@ -1,55 +1,160 @@
 # Policy semantics
 
-`nox_tach.toml` accepts only `[[modules]]` at the top level. Every `path` must be
-an exact Tach module. Keep consumer identities in configuration.
+The policy preserves explicit architectural decisions when imports change.
+Upstream Tach checks actual imports against the graph; nox-tach checks additional
+constraints on that graph. Policy violations should lead to a deliberate design
+decision, not an automatic expansion of permissions.
+See the [ownership map](ARCHITECTURE.md#ownership-map) for implementation and tests.
+
+## Configuration and source roots
+
+`nox_tach.toml` accepts only `[[modules]]` at the top level. Each policy `path`
+must identify an exact module in `tach.toml`; consumer names belong in configuration.
+
+Nox-tach requires explicit, nonempty `source_roots`, `exact = true`,
+`root_module = "forbid"`, and a `depends_on` array on every Tach module.
+Use `depends_on = []` when there are no dependencies. These are nox-tach's required
+settings, not upstream Tach's permissive defaults.
+
+Relative source roots resolve against the selected Tach file's parent;
+`source_roots = ["."]` explicitly selects that directory.
+Directory and single-file boundaries are supported. A directory boundary need not
+contain `__init__.py`, but every top-level Python package that does contain it
+needs its own exact declaration. Ambiguous resolution through multiple roots fails.
+`--fix` never creates missing boundaries.
+
+## Keys and patterns
 
 | Module key | Meaning |
 | --- | --- |
-| `dependency_whitelist` | Outgoing permissions; the declared subtree is implicit |
+| `dependency_whitelist` | Permitted outgoing targets; the policy subtree is implicit |
 | `dependency_blacklist` | Prohibited outgoing targets, including transitive paths |
-| `parents_whitelist` | Inbound callers; the declared subtree is implicit |
-| `external_lib_whitelist` | Permitted third-party imports; stdlib and legal first-party imports remain available |
-| `dev_only` | Marks the complete subtree as development infrastructure |
-| `test_root` | True-only role marker declaring an aggregate test root |
-| `test_mirror_component_suffix` | Required suffix rule for a test root, e.g. `_test` |
-| `test_infra` | True-only role marker for reusable infrastructure below a test root |
-| `collapse_references` | Collapses external references to a subtree into its root and/or recursive pattern |
-| `collapse_references_blacklist` | Consumer patterns whose references remain explicit |
+| `parents_whitelist` | Permitted inbound callers; the policy subtree is implicit |
+| `external_lib_whitelist` | Permitted external imports, in addition to stdlib and legal first-party imports |
+| `dev_only` | Development-only status for the entire subtree |
+| `test_root` | True-only marker for an aggregate test root |
+| `test_mirror_component_suffix` | Required naming rule for a test root; may be empty |
+| `test_infra` | True-only marker for reusable support below a test root |
+| `collapse_references` | Canonicalize external consumers' references to this subtree |
+| `collapse_references_blacklist` | Consumer patterns whose references stay explicit |
 
-`collapse_references_blacklist` requires `collapse_references = true`.
+Patterns mean exact module (`pkg`), direct children (`pkg.*`), or recursive
+descendants (`pkg.**`). Recursive descendants do not include the root.
+Every pattern root must be an exact Tach module. A blacklist targeting a top-level
+package must use the canonical pair `["pkg", "pkg.**"]`; nested roots use normal
+pattern semantics.
 
-Patterns are exact modules, direct children (`pkg.*`), or recursive descendants
-(`pkg.**`). Recursive descendants do not include the root. Each pattern root must
-be an exact Tach module. For a top-level blacklist, use the canonical pair
-`["pkg", "pkg.**"]`.
+## Inheritance and dependency direction
 
-Omission and an empty whitelist differ. Omission adds no boundary; an empty
-whitelist permits only that boundary's own subtree. Descendant outgoing and
-inbound whitelists may only narrow their ancestors' permissions. A new child
-whitelist replaces the implicit self-zone with the child's subtree; access to
-ancestor siblings must be explicitly retained. Blacklists accumulate and cannot
-be reopened by a child whitelist. A non-dev module cannot depend on an effectively
-dev-only module. `dev_only = false` cannot override inherited or implied dev status.
+Omitting a whitelist introduces no new restriction at that boundary; it does not
+reset inherited restrictions. An empty outgoing whitelist permits only that
+policy's own subtree. Descendant outgoing and inbound whitelists may only narrow
+their ancestors' permissions.
 
-Test roots must be disjoint and imply dev-only status. Focused boundaries below a
-test root mirror subjects by removing the configured suffix from each relative
-component. Every subject must be an exact Tach module; duplicate subject identities
-inside one test root are rejected. Focused tests can depend on the subject subtree,
-its transitive downstream dependency cone, and configured test infrastructure.
-Declaring a test root does not require every physical test directory to become a
-focused boundary. The aggregate root cannot be a dependency target.
+A child whitelist establishes a new implicit self-subtree. For example:
 
-Test infrastructure must be strictly below a test root and explicitly declare both
-dependency and external whitelists. It does not mirror a subject and cannot depend
-on ordinary focused tests or aggregate test roots. All normal policies still apply.
+```toml
+[[modules]]
+path = "core"
+dependency_whitelist = []
 
-Tach requires explicit `source_roots`, `exact = true`, `root_module = "forbid"`,
-and a `depends_on` array on every module. Every top-level Python package under a
-source root needs an exact module declaration. Directory and single-file boundaries
-are supported; ambiguous resolution through multiple roots is rejected.
+[[modules]]
+path = "core.parser"
+dependency_whitelist = []
+```
 
-Normalization sorts/deduplicates dependencies and groups production modules without
-first-party dependencies, remaining production modules, and dev modules. Policy
-blocks group production before dev, alphabetical within each group. Comments outside
-managed regions and manual Ruff third-party exceptions are preserved. Source roots
-remain relative to the selected Tach file, including in an installed distribution.
+With exact Tach declarations for these paths, `core.parser` can use itself and its
+descendants, but cannot use `core.hashing` merely because both live under `core`.
+Explicitly retaining `core.hashing` in the child's whitelist permits that sibling
+only if the ancestor also permits it. Parent whitelists apply the same rule to
+inbound callers. No module name receives a special exception.
+
+Blacklists accumulate and cannot be reopened by child whitelists. If `A`
+blacklists `C`, both `A -> C` and `A -> B -> C` violate policy.
+The graph, rather than only direct import statements, determines this restriction.
+
+A non-dev module cannot depend on an effectively dev-only module.
+`dev_only = false` cannot override inherited or role-implied development status.
+Declared values remain distinct from effective status in the typed models.
+
+## External imports
+
+External whitelists inspect Python import statements beneath the configured
+boundary, including single-file boundaries. Stdlib and legal first-party imports
+remain available; `external_lib_whitelist = []` prohibits third-party imports.
+External permission does not bypass graph policy. Keep external libraries at the
+smallest appropriate integration boundary and declare package dependencies
+separately in the consumer's project metadata.
+
+## Test roles
+
+Test roots are disjoint, imply dev-only status, and require a mirror suffix:
+
+```toml
+[[modules]]
+path = "specs"
+test_root = true
+test_mirror_component_suffix = "_spec"
+```
+
+Focused boundaries are progressive opt-in: declaring a test root does not require
+every physical test directory to become an exact boundary. Each declared boundary
+strictly below a root, except test infrastructure, mirrors a subject by removing
+the suffix from each relative component. Thus `specs.core_spec.parser_spec`
+mirrors `core.parser`. The subject must be an exact Tach module, and may itself
+be dev-only. One root cannot contain duplicate identities for the same subject;
+separate roots may mirror the same subject.
+
+A focused test may depend on its subject subtree, that subtree's transitive
+downstream dependencies, and declared test infrastructure. Upstream consumers do
+not enter the cone. If `service -> core`, tests of `core` gain no permission to
+import `service`. Aggregate boundaries need not fabricate direct subject imports.
+
+The aggregate test root cannot be a dependency target. Modules outside a test root
+cannot depend on its ordinary focused tests. Reusable support is declared explicitly:
+
+```toml
+[[modules]]
+path = "specs.helpers"
+test_infra = true
+dependency_whitelist = []
+external_lib_whitelist = ["pytest"]
+```
+
+Infrastructure must be strictly below a test root and explicitly declare both
+whitelists, even when empty. It does not mirror a subject and cannot depend on
+ordinary focused tests or aggregate roots. Other policy restrictions still apply.
+Role markers accept only true; omit them instead of writing false.
+
+## Normalization and Ruff
+
+Dependencies are sorted/deduplicated. Tach modules group dependency-free production,
+remaining production, then effective dev modules; policy blocks group production
+before dev. Each group is alphabetical. Comments outside managed regions survive.
+
+Collapsing is opt-in and affects consumers outside the selected subtree.
+A reference to `core.parser` can become `core.**`; an exact `core` reference
+remains separate. Internal dependencies stay explicit.
+`collapse_references_blacklist` exempts matching consumers and requires enabled
+collapsing. The removed `collapse_references_exclude` key is rejected.
+
+Ruff's `known-first-party` is generated from declared top-level Tach roots.
+Manually maintained `known-third-party` entries take precedence.
+The historical generated comment uses `America/New_York`; its timestamp changes
+only when the list changes or its comment needs adding. Repeated fixes are
+byte-identical. Other Ruff/Pyright policy belongs to the shared standards tooling.
+
+## Repairing violations
+
+| Failure | First action |
+| --- | --- |
+| Missing/ambiguous boundary or source root | Correct explicit topology before running fixes |
+| Child widens inherited permissions | Check the parent's permissions and the child's new self-subtree |
+| Transitive blacklist violation | Follow the reported dependency path and remove or redirect the offending edge |
+| Test outside its subject cone | Move the test to its owning subject or use narrowly declared infrastructure |
+| Invalid role or duplicate subject | Correct role placement or retain one canonical mirror identity |
+| External import violation | Check whether that integration belongs at the boundary before adding permission |
+| Configuration differs from canonical output | Run the [convergence commands](DEVELOPMENT.md#verification) and review the diff |
+
+Use the [execution contract](ARCHITECTURE.md#execution-contract) to distinguish
+failures before writes from policy failures after normalization.
