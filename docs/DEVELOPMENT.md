@@ -78,7 +78,11 @@ in dependency URLs, lockfiles, or logs. A consumer's default repository-scoped
 Actions token cannot fetch nox-tach. This package's own CI token can fetch itself.
 If access is missing, report the prerequisite; cached installs do not prove access.
 
-There is no registry publishing workflow. Consumer migration history is in
+The [release-assets workflow](RELEASING.md) attaches a wheel, source distribution,
+and checksums to GitHub releases after running the tagged revision's checks. It
+runs on release publication or manually from `master` with an existing release tag,
+including `v0.1.0`. It uses this repository's built-in token; no extra release secret
+or PyPI publishing is needed. Consumer migration history is in
 [EXTRACTION.md](EXTRACTION.md); it is not a prerequisite for routine development.
 
 ## Maintaining guidance
