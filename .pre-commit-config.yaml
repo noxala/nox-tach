@@ -14,7 +14,7 @@ repos:
 
       - id: repository-guidance
         name: Repository guidance drift
-        entry: uv run --locked nox-docs-check
+        entry: make docs-check
         language: system
         pass_filenames: false
         always_run: true

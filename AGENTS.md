@@ -11,6 +11,7 @@ Consumer repositories are unnecessary for ordinary package work.
 | --- | --- |
 | Policy parsing, inheritance, tests, or import restrictions | [Policy semantics](docs/POLICY.md), then [ownership map](docs/ARCHITECTURE.md#ownership-map) |
 | Graph traversal, normalization, or CLI behavior | [Ownership and execution](docs/ARCHITECTURE.md) |
+| Markdown module maps | [Module-map guide](docs/MODULE_MAP.md), then [ownership map](docs/ARCHITECTURE.md#ownership-map) |
 | Supported Python API or packaging | [Supported API](docs/ARCHITECTURE.md#supported-api), [package checks](docs/DEVELOPMENT.md#verification) |
 | Setup, CI, standards, or releases | [Development](docs/DEVELOPMENT.md) |
 | Consumer usage | [README](README.md) |

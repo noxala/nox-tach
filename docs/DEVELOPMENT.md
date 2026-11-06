@@ -23,6 +23,7 @@ separate source roots for native Tach.
 | --- | --- |
 | Focused iteration | `uv run --locked pytest dev/tests/nox_tach_test/runner_test.py` (choose tests from the [ownership map](ARCHITECTURE.md#ownership-map)) |
 | Agent guidance and documentation | `make docs-check` |
+| Regenerate this repository's module map | `make docs` |
 | Python formatting/fixes | `make ruff`, repeated until a full pass makes no edits |
 | Complete PR verification | `make ci` |
 | Explicit wheel/sdist build | `make build` |
@@ -42,7 +43,8 @@ list; keep this name stable.
 
 [Package tests](../dev/tests/test_package.py) build a wheel and sdist, rebuild the
 wheel from the sdist, and install both wheels non-editably in clean environments.
-They run both CLI entry points from unrelated consumer directories, verify
+They run both CLI entry points from unrelated consumer directories, generate and
+check module maps with explicit input/output paths, verify
 non-mutating failures and repeatable fixes, and type-check the supported API.
 Do not make these pass through `PYTHONPATH`, consumer checkouts, or application
 fixtures. The separate CI Git-install step installs the exact tested commit from
@@ -75,7 +77,7 @@ including from private consumer repositories.
    For a uv project using the `dev` group, this example updates both:
 
    ```bash
-   uv add --group dev 'nox-tach @ https://github.com/noxala/nox-tach/releases/download/v0.2.0/nox_tach-0.2.0-py3-none-any.whl'
+   uv add --group dev 'nox-tach @ https://github.com/noxala/nox-tach/releases/download/v0.3.0/nox_tach-0.3.0-py3-none-any.whl'
    uv sync --locked
    ```
 
@@ -107,7 +109,8 @@ or PyPI publishing is needed. Consumer migration history is in
 
 Keep [AGENTS.md](../AGENTS.md) as a short router, with detail owned by the relevant
 guide. It has a 450-word budget, measured by whitespace splitting rather than a
-model-specific tokenizer. `make docs-check` runs the installed `nox-docs-check`;
+model-specific tokenizer. `make docs-check` runs the installed `nox-docs-check`
+and checks the generated module map;
 document paths and the budget are declared in `[tool.nox-python-standards.docs]`
 in `pyproject.toml`. The standards package owns the checker and its regression tests.
 It validates local Markdown links and heading anchors, including the router's

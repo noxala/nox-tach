@@ -4,6 +4,7 @@
 
 [[modules]]
 path = "nox_tach"
+description = "Reusable architectural policy tooling and module-map generation."
 dependency_whitelist = []
 external_lib_whitelist = []
 
@@ -20,6 +21,10 @@ path = "nox_tach.imports"
 dependency_whitelist = ["nox_tach.config", "nox_tach.tach_config"]
 
 [[modules]]
+path = "nox_tach.module_map"
+dependency_whitelist = ["nox_tach.config", "nox_tach.tach_config"]
+
+[[modules]]
 path = "nox_tach.normalization"
 dependency_whitelist = ["nox_tach.config", "nox_tach.patterns", "nox_tach.tach_config"]
 
@@ -33,7 +38,7 @@ dependency_whitelist = ["nox_tach.tach_config"]
 
 [[modules]]
 path = "nox_tach.runner"
-dependency_whitelist = ["nox_tach.config", "nox_tach.imports", "nox_tach.normalization", "nox_tach.ruff_config", "nox_tach.tach_config", "nox_tach.validators"]
+dependency_whitelist = ["nox_tach.config", "nox_tach.imports", "nox_tach.module_map", "nox_tach.normalization", "nox_tach.ruff_config", "nox_tach.tach_config", "nox_tach.validators"]
 
 [[modules]]
 path = "nox_tach.tach_config"
@@ -48,6 +53,7 @@ dependency_whitelist = ["nox_tach.config", "nox_tach.patterns", "nox_tach.tach_c
 
 [[modules]]
 path = "tests"
+description = "Focused engine tests, repository checks, and installed-artifact validation."
 test_root = true
 test_mirror_component_suffix = "_test"
 dependency_whitelist = ["nox_tach", "nox_tach.**"]

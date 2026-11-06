@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shlex
 
 import pytest
 
@@ -199,6 +200,107 @@ def test_check_rejects_stale_ruff_configuration_without_mutating_it(
 def test_runner_requires_explicit_mode() -> None:
     with pytest.raises(SystemExit):
         runner.build_parser().parse_args([])
+
+
+def _write_docs_fixture(root: Path) -> tuple[Path, Path, Path]:
+    paths = _write_runner_fixture(root)
+    paths[1].write_text(
+        '[[modules]]\npath = "apkg"\ndescription = "Application."\n'
+        '\n[[modules]]\npath = "zpkg"\ndescription = "Support."\n',
+        encoding="utf-8",
+    )
+    paths[2].write_text(
+        '[project]\nname = "sample-project"\n' + paths[2].read_text(),
+        encoding="utf-8",
+    )
+    return paths
+
+
+def test_docs_generate_and_check_from_an_unrelated_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    paths = _write_docs_fixture(tmp_path / "consumer config")
+    options = [
+        "--tach-path",
+        str(paths[0]),
+        "--policy-path",
+        str(paths[1]),
+        "--pyproject-path",
+        str(paths[2]),
+        "--output",
+        "reference/map.md",
+    ]
+    monkeypatch.chdir(tmp_path)
+    before = tuple(path.read_bytes() for path in paths)
+    runner.main(["docs", *options])
+    output = paths[0].parent / "reference/map.md"
+    rendered = output.read_bytes()
+    assert rendered.startswith(b"# Generated sample-project Module Map\n")
+    assert not (tmp_path / "reference").exists()
+    assert tuple(path.read_bytes() for path in paths) == before
+
+    runner.main(["docs", "--check", *options])
+    assert output.read_bytes() == rendered
+    assert tuple(path.read_bytes() for path in paths) == before
+    output.write_text("stale\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="module map is missing or stale") as error:
+        runner.main(["docs", "--check", *options])
+    assert "--policy-path" in str(error.value)
+    assert str(paths[1]) in str(error.value)
+    assert output.read_text() == "stale\n"
+    assert tuple(path.read_bytes() for path in paths) == before
+    assert "(generated)" in capsys.readouterr().out
+    command = shlex.split(str(error.value).split("Run `", 1)[1].removesuffix("`."))
+    assert command[0] == "nox-tach"
+    runner.main(command[1:])
+    assert output.read_bytes() == rendered
+    assert tuple(path.read_bytes() for path in paths) == before
+
+
+def test_docs_check_does_not_create_missing_output(tmp_path: Path) -> None:
+    paths = _write_docs_fixture(tmp_path)
+    with pytest.raises(RuntimeError, match="module map is missing or stale"):
+        runner.run_docs(
+            check=True,
+            tach_path=paths[0],
+            policy_path=paths[1],
+            pyproject_path=paths[2],
+        )
+    assert not (tmp_path / "docs").exists()
+
+
+@pytest.mark.parametrize("input_index", [0, 1, 2], ids=["tach", "policy", "pyproject"])
+@pytest.mark.parametrize("check", [False, True], ids=["generate", "check"])
+def test_docs_output_cannot_replace_a_source_file(
+    tmp_path: Path, input_index: int, check: bool
+) -> None:
+    paths = _write_docs_fixture(tmp_path)
+    before = tuple(path.read_bytes() for path in paths)
+    with pytest.raises(ValueError, match="must not overwrite an input"):
+        runner.run_docs(
+            check=check,
+            tach_path=paths[0],
+            policy_path=paths[1],
+            pyproject_path=paths[2],
+            output_path=paths[input_index],
+        )
+    assert tuple(path.read_bytes() for path in paths) == before
+
+
+def test_invalid_docs_input_preserves_existing_output(tmp_path: Path) -> None:
+    paths = _write_docs_fixture(tmp_path)
+    output = tmp_path / "map.md"
+    output.write_text("existing\n", encoding="utf-8")
+    paths[1].write_text("", encoding="utf-8")
+    with pytest.raises(ValueError, match="Missing top-level module descriptions"):
+        runner.run_docs(
+            check=False,
+            tach_path=paths[0],
+            policy_path=paths[1],
+            pyproject_path=paths[2],
+            output_path=output,
+        )
+    assert output.read_text() == "existing\n"
 
 
 def test_external_lib_validation_uses_configured_package_source_root(

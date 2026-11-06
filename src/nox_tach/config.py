@@ -22,6 +22,7 @@ class TestRootSpec:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ModulePolicy:
     path: str
+    description: str | None = None
     dependency_whitelist: frozenset[str] | None = None
     dependency_blacklist: frozenset[str] | None = None
     parents_whitelist: frozenset[str] | None = None
@@ -263,6 +264,7 @@ def _parse_modules(value: object) -> tuple[ModulePolicy, ...]:
     seen_paths: set[str] = set()
     allowed_fields = {
         "path",
+        "description",
         "dependency_whitelist",
         "dependency_blacklist",
         "parents_whitelist",
@@ -292,6 +294,15 @@ def _parse_modules(value: object) -> tuple[ModulePolicy, ...]:
 
         path = path_obj.strip()
         _validate_module_name(path)
+
+        description: str | None = None
+        if "description" in spec:
+            description_obj = spec["description"]
+            if not isinstance(description_obj, str) or not description_obj.strip():
+                raise ValueError(f"{field}.description must be a non-blank string")
+            if "\n" in description_obj or "\r" in description_obj:
+                raise ValueError(f"{field}.description must be a single line")
+            description = description_obj.strip()
 
         if path in seen_paths:
             raise ValueError(f"modules contains duplicate policy for path {path!r}")
@@ -399,6 +410,7 @@ def _parse_modules(value: object) -> tuple[ModulePolicy, ...]:
         specs.append(
             ModulePolicy(
                 path=path,
+                description=description,
                 dependency_whitelist=(
                     None
                     if dependency_whitelist is None
