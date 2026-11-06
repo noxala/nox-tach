@@ -94,7 +94,7 @@ def wheels(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
             )
             metadata = Parser().parsestr(archive.read(metadata_path).decode())
             assert metadata["Name"] == "nox-tach"
-            assert metadata["Version"] == "0.1.0"
+            assert metadata["Version"] == "0.1.2"
             assert set(metadata["Requires-Python"].split(",")) == {">=3.14.10", "<3.15"}
             assert metadata.get_all("Requires-Dist", []) == []
     return result
