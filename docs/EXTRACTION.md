@@ -48,25 +48,24 @@ against the shared package. On the unchanged COMO configuration snapshot, parsed
 model fields matched, all three normalized outputs were byte-identical under a
 fixed timestamp, and ten graph-policy validators had equivalent outcomes.
 Filesystem-aware validation against the complete COMO checkout and its architecture
-report remains part of the consumer PR; standalone CI requires no COMO checkout.
+report belongs to the consumer adoption; standalone CI requires no COMO checkout.
 
-The rollout is sequential:
+## Completed rollout
 
-1. Merge the standalone package PR after all CI checks and review.
-2. Record and prove a clean private Git install of the full merged SHA.
-3. Start COMO adoption from fresh `master`, including CI private-fetch credentials,
-   a locked development dependency, report-generator API imports, retained real-policy
-   tests, and removal of the local engine/generic tests. Rename COMO's collapse
-   exception keys to `collapse_references_except` without changing their values.
-   Compare the unchanged COMO snapshot before removing code, then review only
-   extraction-related graph changes.
-4. Consider Milan adoption separately.
+The extraction and COMO adoption are complete. Merged
+[COMO #523](https://github.com/noxala/como/pull/523) consumes the public
+[nox-tach v0.2.0 wheel](https://github.com/noxala/nox-tach/releases/tag/v0.2.0),
+with its URL and SHA256 recorded in `uv.lock`. The post-merge
+[consumer CI](https://github.com/noxala/como/actions/runs/42251636985) passed.
+COMO owns its report-generator integration and real-policy tests; its local
+engine and moved generic tests have been replaced by the shared package. Its
+collapse exception keys use `collapse_references_except`.
 
-CI verifies a clean pip Git install of each PR/push SHA, including the merged
-revision on `master`. It uses a job-scoped credential helper and this repository's
-read token; credentials are never embedded in package references.
+The original private-fetch prerequisite is obsolete: the repository and released
+assets are public, so consumers need no cross-repository download credentials.
+Use [consumer updates](DEVELOPMENT.md#consumer-updates-and-releases) for the current
+release-wheel and lockfile procedure. Milan adoption remains a separate decision.
 
-A repository-scoped Actions token cannot fetch another private repository. If no
-approved cross-repository credential is available, keep COMO's current engine until
-that prerequisite is provisioned. Do not change visibility or bypass policy checks.
-This package PR does not complete the consumer-adoption criteria in issue #1.
+CI verifies a clean pip Git install of each tested PR/push commit without a
+credential helper and checks both CLI entry points outside the checkout. This
+retains exact-revision validation alongside the installed-artifact tests.

@@ -4,9 +4,9 @@
 distribution, and `SHA256SUMS` to an existing GitHub release. It runs automatically
 when a release is published and supports manual backfills of older tags.
 
-## Backfill v0.1.0
+## Manual backfills
 
-After the workflow PR merges:
+To attach assets to an existing release, for example v0.1.0:
 
 1. Open **Actions → Release assets → Run workflow**.
 2. Select the `master` workflow branch, so the new workflow is available.
@@ -27,9 +27,11 @@ publishing. Older releases can use the manual backfill above. Draft releases can
 also receive assets through a manual run before publication.
 
 The job uses the repository's built-in `GITHUB_TOKEN` with Contents write permission;
-no PyPI account, registry publishing, or additional release secret is needed. Files
-remain private with the repository. COMO and other private consumers still need
-their own read credentials to download them.
+no PyPI account, registry publishing, or additional release secret is needed.
+The repository and published release assets are public. Consumers, including
+private repositories, need no cross-repository read credentials to download them.
+Use the released wheel URL and explicitly update the consumer lockfile as described
+in [consumer updates](DEVELOPMENT.md#consumer-updates-and-releases).
 
 Retries skip assets whose GitHub SHA256 digest matches the new build. Different,
 incomplete, or unverifiable existing assets stop the job before any uploads; the
