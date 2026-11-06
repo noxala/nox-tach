@@ -272,7 +272,6 @@ def _parse_modules(value: object) -> tuple[ModulePolicy, ...]:
         "test_infra",
         "test_mirror_component_suffix",
         "collapse_references",
-        "collapse_references_exclude",
         "collapse_references_blacklist",
     }
 
@@ -361,36 +360,16 @@ def _parse_modules(value: object) -> tuple[ModulePolicy, ...]:
             raise ValueError(f"{field}.collapse_references must be a boolean")
         collapse_references = collapse_references_obj
 
-        collapse_references_exclude = _optional_string_list(
-            spec,
-            key="collapse_references_exclude",
-            field=field,
-        )
         collapse_references_blacklist = _optional_string_list(
             spec,
             key="collapse_references_blacklist",
             field=field,
         )
-        if (
-            collapse_references_exclude is not None
-            and collapse_references_blacklist is not None
-        ):
-            raise ValueError(
-                f"{field} may not specify both collapse_references_exclude and "
-                "collapse_references_blacklist"
-            )
-
-        collapse_reference_field = "collapse_references_exclude"
-        collapse_reference_consumers = collapse_references_exclude
-        if collapse_reference_consumers is None:
-            collapse_reference_field = "collapse_references_blacklist"
-            collapse_reference_consumers = collapse_references_blacklist
-
-        if collapse_reference_consumers is None:
-            collapse_reference_consumers = ()
+        if collapse_references_blacklist is None:
+            collapse_references_blacklist = ()
         elif not collapse_references:
             raise ValueError(
-                f"{field}.{collapse_reference_field} requires "
+                f"{field}.collapse_references_blacklist requires "
                 "collapse_references = true"
             )
 
@@ -411,10 +390,10 @@ def _parse_modules(value: object) -> tuple[ModulePolicy, ...]:
             for external_lib in external_lib_whitelist:
                 _validate_module_name(external_lib)
 
-        for excluded_consumer in collapse_reference_consumers:
+        for consumer in collapse_references_blacklist:
             _validate_tach_module_pattern(
-                excluded_consumer,
-                field=f"{field}.{collapse_reference_field}",
+                consumer,
+                field=f"{field}.collapse_references_blacklist",
             )
 
         specs.append(
@@ -443,7 +422,7 @@ def _parse_modules(value: object) -> tuple[ModulePolicy, ...]:
                 test_infra=test_infra,
                 test_mirror_component_suffix=test_mirror_component_suffix,
                 collapse_references=collapse_references,
-                collapse_references_blacklist=frozenset(collapse_reference_consumers),
+                collapse_references_blacklist=frozenset(collapse_references_blacklist),
             )
         )
 

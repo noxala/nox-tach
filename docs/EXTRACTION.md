@@ -27,9 +27,10 @@ Imports use `nox_tach`; source headers use their new repository-relative paths.
 Defaults become `tach.toml`, `nox_tach.toml`, and `pyproject.toml`. Error branding
 becomes `nox-tach`; normalization diagnostics identify the selected files and give
 a shell-quoted shared CLI command. The Ruff generated-comment format and Eastern
-timezone rules remain unchanged. Runtime dependencies remain empty. Model fields,
-TOML keys, exception categories, validation order, and normalization behavior are
-preserved.
+timezone rules remain unchanged. Runtime dependencies remain empty. The initial
+extraction preserved model fields, TOML keys, exception categories, validation order,
+and normalization behavior. Subsequent cleanup makes `collapse_references_blacklist`
+the sole accepted key for consumers whose references must remain explicit.
 
 Validation of the initial extraction ran the original 95 generic cases against
 the original engine and all 97 cases (95 moved plus two installed-artifact cases)
@@ -45,8 +46,10 @@ The rollout is sequential:
 2. Record and prove a clean private Git install of the full merged SHA.
 3. Start COMO adoption from fresh `master`, including CI private-fetch credentials,
    a locked development dependency, report-generator API imports, retained real-policy
-   tests, and removal of the local engine/generic tests. Compare the unchanged COMO
-   snapshot before removing code, then review only extraction-related graph changes.
+   tests, and removal of the local engine/generic tests. Rename COMO's collapse
+   exception keys to `collapse_references_blacklist` without changing their values.
+   Compare the unchanged COMO snapshot before removing code, then review only
+   extraction-related graph changes.
 4. Consider Milan adoption separately.
 
 CI verifies a clean pip Git install of each PR/push SHA, including the merged

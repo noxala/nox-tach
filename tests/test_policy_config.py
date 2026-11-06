@@ -204,6 +204,25 @@ def test_parse_policy_config_rejects_invalid_shape(
         parse_policy_config(text)
 
 
+@pytest.mark.parametrize("with_blacklist", [False, True])
+def test_parse_policy_config_rejects_legacy_collapse_key(
+    with_blacklist: bool,
+) -> None:
+    text = """\
+[[modules]]
+path = "core"
+collapse_references = true
+collapse_references_exclude = ["app"]
+"""
+    if with_blacklist:
+        text += 'collapse_references_blacklist = ["app"]\n'
+
+    with assert_raises_msg(
+        ValueError, "modules[0] has unknown field(s): 'collapse_references_exclude'"
+    ):
+        parse_policy_config(text)
+
+
 def test_parse_policy_config_preserves_absent_dev_only() -> None:
     config = parse_policy_config(
         """\

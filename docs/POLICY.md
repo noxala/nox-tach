@@ -16,9 +16,7 @@ an exact Tach module. Keep consumer identities in configuration.
 | `collapse_references` | Collapses external references to a subtree into its root and/or recursive pattern |
 | `collapse_references_blacklist` | Consumer patterns whose references remain explicit |
 
-`collapse_references_exclude` remains accepted as the legacy spelling of
-`collapse_references_blacklist`; do not set both. Collapse exceptions require
-enabled collapsing. Existing TOML keys and model fields are preserved.
+`collapse_references_blacklist` requires `collapse_references = true`.
 
 Patterns are exact modules, direct children (`pkg.*`), or recursive descendants
 (`pkg.**`). Recursive descendants do not include the root. Each pattern root must
