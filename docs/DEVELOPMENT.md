@@ -37,7 +37,7 @@ in GitHub-managed virtual machines.
 In repository branch protection or rulesets, require the **`ci-gate`** check.
 The final job in [CI](../.github/workflows/ci.yml) runs even if its dependencies
 fail or are skipped, and passes only when every dependency succeeds. It covers
-`make ci` and the clean private Git install. Add any future CI jobs to its `needs`
+`make ci` and the clean Git install. Add any future CI jobs to its `needs`
 list; keep this name stable.
 
 [Package tests](../dev/tests/test_package.py) build a wheel and sdist, rebuild the
@@ -45,8 +45,9 @@ wheel from the sdist, and install both wheels non-editably in clean environments
 They run both CLI entry points from unrelated consumer directories, verify
 non-mutating failures and repeatable fixes, and type-check the supported API.
 Do not make these pass through `PYTHONPATH`, consumer checkouts, or application
-fixtures. The separate CI Git-install step proves private fetching of the tested
-revision with an empty dependency cache.
+fixtures. The separate CI Git-install step installs the exact tested commit from
+the public repository with an empty dependency cache and runs both CLI entry points
+outside the checkout.
 
 Before changing this repository's module declarations or generated configuration,
 run `make standards-check`, then native `uv run --locked tach sync`,
@@ -62,24 +63,38 @@ it, then run `uv run --locked nox-py-standards sync`. Review its diff and run CI
 Ruff version approval remains manual. Checks, installation, and CI never sync
 settings or approve tool upgrades.
 
-## Private access and releases
+## Consumer updates and releases
 
-Consumers pin a reviewed **full merged commit SHA**, including when a GitHub
-release tag exists. Commit the consumer lockfile. Tags may label releases; they
-do not replace the SHA in the dependency reference.
+Consumers normally pin the wheel URL from a
+[published GitHub release](https://github.com/noxala/nox-tach/releases).
+Package downloads and public Git installs require no cross-repository credentials,
+including from private consumer repositories.
 
-1. Review package version and API/policy compatibility. Update version expectations
-   in the package metadata tests when changing the version.
-2. Pass CI, merge, and record the full merged SHA. Existing tags remain fixed.
-3. Verify a clean Git install of that SHA.
-4. Update each consumer's development pin and lock in a separate PR and prove
-   private fetching before `uv sync --locked`.
+1. Review the release's API/policy compatibility and select its wheel URL.
+2. Update the consumer's development dependency URL and regenerate its lockfile.
+   For a uv project using the `dev` group, this example updates both:
 
-Git credentials need read access to this private repository. Configure a
-developer credential mechanism or job-scoped CI helper; never embed credentials
-in dependency URLs, lockfiles, or logs. A consumer's default repository-scoped
-Actions token cannot fetch nox-tach. This package's own CI token can fetch itself.
-If access is missing, report the prerequisite; cached installs do not prove access.
+   ```bash
+   uv add --group dev 'nox-tach @ https://github.com/noxala/nox-tach/releases/download/v0.2.0/nox_tach-0.2.0-py3-none-any.whl'
+   uv sync --locked
+   ```
+
+3. Review and commit both `pyproject.toml` and `uv.lock`. The lockfile records the
+   release URL and wheel SHA256; run the consumer's policy checks and CI in the same
+   focused dependency-update PR. Installation and CI do not adopt updates implicitly.
+
+When intentionally testing an unreleased revision, use an exact **full commit SHA**
+instead of a branch or moving tag:
+
+```bash
+python -m pip install 'nox-tach @ git+https://github.com/noxala/nox-tach.git@<full-commit-sha>'
+```
+
+If a consumer adopts that revision, record the exact Git reference and update its
+lockfile explicitly. A Git SHA is not required for a published release-wheel pin.
+For new package releases, review compatibility, update the package version and
+its metadata test expectations, pass CI, and merge before publishing a matching
+release. Existing tags remain fixed.
 
 The [release-assets workflow](RELEASING.md) attaches a wheel, source distribution,
 and checksums to GitHub releases after running the tagged revision's checks. It

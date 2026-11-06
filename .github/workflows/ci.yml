@@ -44,17 +44,10 @@ jobs:
       - name: Check standards, policy, formatting, types, tests, and installed artifacts
         run: make ci
 
-      - name: Prove a clean private Git installation of this revision
+      - name: Prove a clean Git installation of this revision
         env:
           PACKAGE_REF: ${{ github.event.pull_request.head.sha || github.sha }}
-          GH_TOKEN: ${{ github.token }}
           GIT_TERMINAL_PROMPT: "0"
-          GIT_CONFIG_COUNT: "1"
-          GIT_CONFIG_KEY_0: credential.https://github.com.helper
-          GIT_CONFIG_VALUE_0: >-
-            !f() { if [ "$1" = get ]; then
-            printf '%s\n' 'username=x-access-token' "password=$GH_TOKEN";
-            fi; }; f
         shell: bash
         run: |
           install_root=$(mktemp -d)

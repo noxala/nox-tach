@@ -7,15 +7,18 @@ configuration maintenance. The installed engine uses only Python's standard libr
 
 ## Install
 
-This repository is private. Install a reviewed full merged commit SHA with Git
-read access, then record that reference in your development dependencies and lockfile:
+Install the wheel from a [published release](https://github.com/noxala/nox-tach/releases),
+for example v0.2.0:
 
 ```bash
-python -m pip install 'nox-tach @ git+https://github.com/noxala/nox-tach.git@<full-merged-commit-sha>'
+python -m pip install 'nox-tach @ https://github.com/noxala/nox-tach/releases/download/v0.2.0/nox_tach-0.2.0-py3-none-any.whl'
 ```
 
-Install upstream Tach separately as a development tool. See
-[private access and releases](docs/DEVELOPMENT.md#private-access-and-releases).
+Public downloads require no cross-repository credentials. Record the release URL
+in your development dependencies and commit the lockfile; see
+[consumer updates and releases](docs/DEVELOPMENT.md#consumer-updates-and-releases)
+for the update procedure and exact-commit installs of unreleased revisions.
+Install upstream Tach separately as a development tool.
 [Package metadata](pyproject.toml) defines the supported Python range.
 Linux and macOS require `America/New_York` timezone data for generated Ruff comments.
 
