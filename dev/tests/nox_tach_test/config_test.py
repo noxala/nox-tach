@@ -32,7 +32,7 @@ parents_whitelist = ["specs", "tools.**"]
 external_lib_whitelist = ["pytest"]
 dev_only = true
 collapse_references = true
-collapse_references_blacklist = ["zoop.zoop", "legacy.**"]
+collapse_references_except = ["zoop.zoop", "legacy.**"]
 """
 
     assert parse_policy_config(text) == PolicyConfig(
@@ -55,7 +55,7 @@ collapse_references_blacklist = ["zoop.zoop", "legacy.**"]
                 dev_only=True,
                 test_infra=True,
                 collapse_references=True,
-                collapse_references_blacklist=frozenset({"zoop.zoop", "legacy.**"}),
+                collapse_references_except=frozenset({"zoop.zoop", "legacy.**"}),
             ),
         )
     )
@@ -179,20 +179,20 @@ collapse_references = "yes"
             """\
 [[modules]]
 path = "core"
-collapse_references_blacklist = ["app"]
+collapse_references_except = ["app"]
 """,
-            "collapse_references_blacklist requires collapse_references = true",
-            id="collapse_blacklist_requires_enabled_collapse",
+            "collapse_references_except requires collapse_references = true",
+            id="collapse_exceptions_requires_enabled_collapse",
         ),
         pytest.param(
             """\
 [[modules]]
 path = "core"
 collapse_references = false
-collapse_references_blacklist = ["app"]
+collapse_references_except = ["app"]
 """,
-            "collapse_references_blacklist requires collapse_references = true",
-            id="collapse_blacklist_rejects_explicit_false",
+            "collapse_references_except requires collapse_references = true",
+            id="collapse_exceptions_rejects_explicit_false",
         ),
     ],
 )
@@ -204,21 +204,25 @@ def test_parse_policy_config_rejects_invalid_shape(
         parse_policy_config(text)
 
 
-@pytest.mark.parametrize("with_blacklist", [False, True])
+@pytest.mark.parametrize(
+    "legacy_key", ["collapse_references_blacklist", "collapse_references_exclude"]
+)
+@pytest.mark.parametrize("with_except", [False, True])
 def test_parse_policy_config_rejects_legacy_collapse_key(
-    with_blacklist: bool,
+    legacy_key: str,
+    with_except: bool,
 ) -> None:
-    text = """\
+    text = f"""\
 [[modules]]
 path = "core"
 collapse_references = true
-collapse_references_exclude = ["app"]
+{legacy_key} = ["app"]
 """
-    if with_blacklist:
-        text += 'collapse_references_blacklist = ["app"]\n'
+    if with_except:
+        text += 'collapse_references_except = ["app"]\n'
 
     with assert_raises_msg(
-        ValueError, "modules[0] has unknown field(s): 'collapse_references_exclude'"
+        ValueError, f"modules[0] has unknown field(s): {legacy_key!r}"
     ):
         parse_policy_config(text)
 
@@ -456,22 +460,22 @@ path = "core"
 
     module = config.modules[0]
     assert module.collapse_references is False
-    assert module.collapse_references_blacklist == frozenset()
+    assert module.collapse_references_except == frozenset()
 
 
-def test_parse_policy_config_accepts_collapse_blacklist_tach_patterns() -> None:
+def test_parse_policy_config_accepts_collapse_exceptions_tach_patterns() -> None:
     config = parse_policy_config(
         """\
 [[modules]]
 path = "qb"
 collapse_references = true
-collapse_references_blacklist = ["zoop.zoop", "legacy.*", "old.**"]
+collapse_references_except = ["zoop.zoop", "legacy.*", "old.**"]
 """
     )
 
     module = config.modules[0]
     assert module.collapse_references is True
-    assert module.collapse_references_blacklist == frozenset(
+    assert module.collapse_references_except == frozenset(
         {"zoop.zoop", "legacy.*", "old.**"}
     )
 
@@ -537,12 +541,12 @@ path = "client"
         parse_policy_config(text)
 
 
-def test_parse_policy_config_rejects_invalid_collapse_blacklist_pattern() -> None:
+def test_parse_policy_config_rejects_invalid_collapse_exceptions_pattern() -> None:
     text = """\
 [[modules]]
 path = "qb"
 collapse_references = true
-collapse_references_blacklist = ["zoop*"]
+collapse_references_except = ["zoop*"]
 """
 
     with pytest.raises(ValueError, match="supports only exact Tach modules"):

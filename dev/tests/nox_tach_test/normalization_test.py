@@ -100,13 +100,13 @@ def _core_collapse_specs(*, consumer: str) -> tuple[ModulePolicy, ...]:
 [[modules]]
 path = "core"
 collapse_references = true
-collapse_references_blacklist = ["{consumer}"]
+collapse_references_except = ["{consumer}"]
 """
     )
     return config.modules
 
 
-def test_collapse_references_blacklist_keeps_consumer_references_explicit() -> None:
+def test_collapse_references_except_keeps_consumer_references_explicit() -> None:
     specs = _core_collapse_specs(consumer="test.core_test.lib")
 
     assert collapse_dependency_references(
@@ -116,7 +116,7 @@ def test_collapse_references_blacklist_keeps_consumer_references_explicit() -> N
     ) == ["core.lib", "core.lib.**"]
 
 
-def test_collapse_references_blacklist_does_not_affect_other_consumers() -> None:
+def test_collapse_references_except_does_not_affect_other_consumers() -> None:
     specs = _core_collapse_specs(consumer="test.core_test.lib")
 
     assert collapse_dependency_references(
@@ -126,7 +126,7 @@ def test_collapse_references_blacklist_does_not_affect_other_consumers() -> None
     ) == ["core.**"]
 
 
-def test_collapse_references_blacklist_uses_tach_pattern_semantics() -> None:
+def test_collapse_references_except_uses_tach_pattern_semantics() -> None:
     specs = _core_collapse_specs(consumer="test.core_test.**")
 
     assert collapse_dependency_references(
@@ -136,18 +136,32 @@ def test_collapse_references_blacklist_uses_tach_pattern_semantics() -> None:
     ) == ["core.lib"]
 
 
-def test_collapse_references_blacklist_requires_enabled_collapse() -> None:
+def test_collapse_references_except_requires_enabled_collapse() -> None:
     with assert_raises_msg(
         ValueError,
-        "modules[0].collapse_references_blacklist requires collapse_references = true",
+        "modules[0].collapse_references_except requires collapse_references = true",
     ):
         parse_policy_config(
             """\
 [[modules]]
 path = "core"
-collapse_references_blacklist = ["test.core_test.lib"]
+collapse_references_except = ["test.core_test.lib"]
 """
         )
+
+
+def test_normalize_policy_text_sorts_collapse_exceptions_idempotently() -> None:
+    text = """\
+[[modules]]
+path = "core"
+collapse_references = true
+collapse_references_except = ["zeta.**", "app", "legacy.*"]
+"""
+
+    normalized = normalize_policy_text(text)
+
+    assert 'collapse_references_except = ["app", "legacy.*", "zeta.**"]' in normalized
+    assert normalize_policy_text(normalized) == normalized
 
 
 def test_collapse_dependency_references_preserves_internal_references() -> None:

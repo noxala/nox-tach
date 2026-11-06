@@ -33,8 +33,9 @@ becomes `nox-tach`; normalization diagnostics identify the selected files and gi
 a shell-quoted shared CLI command. The Ruff generated-comment format and Eastern
 timezone rules remain unchanged. Runtime dependencies remain empty. The initial
 extraction preserved model fields, TOML keys, exception categories, validation order,
-and normalization behavior. Subsequent cleanup makes `collapse_references_blacklist`
-the sole accepted key for consumers whose references must remain explicit.
+and normalization behavior. Version 0.2.0 makes `collapse_references_except` the
+sole accepted key for consumers whose references must remain explicit, replacing
+`collapse_references_blacklist`. See the [migration example](POLICY.md#normalization-and-ruff).
 
 The subsequent guidance review deliberately requires explicit `source_roots`.
 Unlike the extraction baseline's implicit `["."]`, current consumers must declare
@@ -56,7 +57,7 @@ The rollout is sequential:
 3. Start COMO adoption from fresh `master`, including CI private-fetch credentials,
    a locked development dependency, report-generator API imports, retained real-policy
    tests, and removal of the local engine/generic tests. Rename COMO's collapse
-   exception keys to `collapse_references_blacklist` without changing their values.
+   exception keys to `collapse_references_except` without changing their values.
    Compare the unchanged COMO snapshot before removing code, then review only
    extraction-related graph changes.
 4. Consider Milan adoption separately.

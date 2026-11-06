@@ -94,7 +94,7 @@ def wheels(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
             )
             metadata = Parser().parsestr(archive.read(metadata_path).decode())
             assert metadata["Name"] == "nox-tach"
-            assert metadata["Version"] == "0.1.2"
+            assert metadata["Version"] == "0.2.0"
             assert set(metadata["Requires-Python"].split(",")) == {">=3.14.10", "<3.15"}
             assert metadata.get_all("Requires-Dist", []) == []
     return result
@@ -112,7 +112,8 @@ def _consumer(root: Path, names: tuple[str, str, str]) -> tuple[Path, Path, Path
     )
     policy.write_text(
         '[[modules]]\npath = "pkg"\ndependency_whitelist = []\n'
-        "external_lib_whitelist = []\n",
+        "external_lib_whitelist = []\ncollapse_references = true\n"
+        "collapse_references_except = []\n",
         encoding="utf-8",
     )
     pyproject.write_text(
@@ -193,16 +194,17 @@ def test_installed_artifacts(
     )
     _run([cli, "--check", *options], cwd=tmp_path, success=False)
 
-    files[1].write_text(
-        '[[modules]]\npath = "pkg"\ncollapse_references = true\n'
-        "collapse_references_exclude = []\n",
-        encoding="utf-8",
-    )
-    invalid = tuple(path.read_bytes() for path in files)
-    for mode in ("--check", "--fix"):
-        failure = _run([cli, mode, *options], cwd=tmp_path, success=False)
-        assert "unknown field(s): 'collapse_references_exclude'" in failure.stderr
-        assert tuple(path.read_bytes() for path in files) == invalid
+    for legacy_key in ("collapse_references_blacklist", "collapse_references_exclude"):
+        files[1].write_text(
+            '[[modules]]\npath = "pkg"\ncollapse_references = true\n'
+            f"{legacy_key} = []\n",
+            encoding="utf-8",
+        )
+        invalid = tuple(path.read_bytes() for path in files)
+        for mode in ("--check", "--fix"):
+            failure = _run([cli, mode, *options], cwd=tmp_path, success=False)
+            assert f"unknown field(s): {legacy_key!r}" in failure.stderr
+            assert tuple(path.read_bytes() for path in files) == invalid
 
     defaults = tmp_path / "defaults"
     _consumer(defaults, ("tach.toml", "nox_tach.toml", "pyproject.toml"))
@@ -223,6 +225,13 @@ def test_installed_artifacts(
         'assert policy == parse_policy_config(Path("nox_tach.toml").read_text())\n'
         "module: ModulePolicy = policy.modules[0]\n"
         'assert module.path == "pkg"\n'
+        "assert module.collapse_references is True\n"
+        "assert module.collapse_references_except == frozenset()\n"
+        'exception_policy: ModulePolicy = ModulePolicy(path="pkg", '
+        "collapse_references=True, "
+        'collapse_references_except=frozenset({"consumer"}))\n'
+        "assert exception_policy.collapse_references_except == "
+        'frozenset({"consumer"})\n'
         'root: TestRootSpec = TestRootSpec(path="specs", '
         'mirror_component_suffix="_spec")\n'
         'assert root.path == "specs"\n'
