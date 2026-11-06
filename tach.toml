@@ -1,0 +1,9 @@
+source_roots = ["src"]
+exact = true
+root_module = "forbid"
+
+# --- Production modules: no first-party dependencies ---
+
+[[modules]]
+path = "nox_tach"
+depends_on = []

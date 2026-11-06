@@ -1,0 +1,8 @@
+# The installed engine may import only its own subtree and the standard library.
+
+# --- Production dependency policy ---
+
+[[modules]]
+path = "nox_tach"
+dependency_whitelist = []
+external_lib_whitelist = []
