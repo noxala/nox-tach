@@ -1,0 +1,183 @@
+name: Release assets
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build
+        required: true
+        default: v0.1.0
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-assets-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+jobs:
+  release-assets:
+    name: Build and attach release assets
+    runs-on: self-hosted
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Resolve the existing release and tag
+        id: release
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const tag = process.env.RELEASE_TAG;
+            const {data: release} = await github.rest.repos.getReleaseByTag({
+              ...context.repo, tag,
+            });
+            if (release.immutable) {
+              throw new Error('This release is immutable; attach assets to a draft before publishing.');
+            }
+            const {data: ref} = await github.rest.git.getRef({
+              ...context.repo, ref: `tags/${tag}`,
+            });
+            let object = ref.object;
+            while (object.type === 'tag') {
+              const {data: annotated} = await github.rest.git.getTag({
+                ...context.repo, tag_sha: object.sha,
+              });
+              object = annotated.object;
+            }
+            if (object.type !== 'commit') throw new Error('The tag must resolve to a commit.');
+            core.setOutput('commit', object.sha);
+            core.setOutput('release-id', String(release.id));
+            core.info(`Building ${tag} from ${object.sha}`);
+
+      - name: Check out the exact tagged commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.release.outputs.commit }}
+          persist-credentials: false
+
+      - name: Install Node.js for Pyright
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.6"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install Python
+        run: uv python install 3.14.10
+
+      - name: Verify the tag matches the package version
+        run: |
+          release_python=$(uv python find 3.14.10)
+          "$release_python" - <<'PY'
+          import os
+          from pathlib import Path
+          import tomllib
+
+          project = tomllib.loads(Path("pyproject.toml").read_text())["project"]
+          expected = "v" + project["version"]
+          if os.environ["RELEASE_TAG"] != expected:
+              raise SystemExit(f"Release tag must match package version: expected {expected}")
+          PY
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run the tagged revision's checks
+        run: make ci
+
+      - name: Build wheel and source distribution
+        run: |
+          SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD)
+          export SOURCE_DATE_EPOCH
+          uv build --no-sources --out-dir dist --clear
+          release_python=$(uv python find 3.14.10)
+          "$release_python" - <<'PY'
+          import hashlib
+          from pathlib import Path
+
+          wheels = sorted(Path("dist").glob("*.whl"))
+          sdists = sorted(Path("dist").glob("*.tar.gz"))
+          if len(wheels) != 1 or len(sdists) != 1:
+              raise SystemExit("Expected exactly one wheel and one source distribution")
+          paths = wheels + sdists
+          checksums = "".join(
+              f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n"
+              for path in paths
+          )
+          Path("dist/SHA256SUMS").write_text(checksums)
+          PY
+
+      - name: Attach artifacts to the release
+        uses: actions/github-script@v8
+        env:
+          RELEASE_ID: ${{ steps.release.outputs.release-id }}
+          RELEASE_COMMIT: ${{ steps.release.outputs.commit }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const crypto = require('node:crypto');
+            const tag = process.env.RELEASE_TAG;
+            const releaseId = Number(process.env.RELEASE_ID);
+            const {data: release} = await github.rest.repos.getReleaseByTag({
+              ...context.repo, tag,
+            });
+            if (release.id !== releaseId || release.immutable) {
+              throw new Error('The target release changed while building; no assets were uploaded.');
+            }
+            const {data: ref} = await github.rest.git.getRef({
+              ...context.repo, ref: `tags/${tag}`,
+            });
+            let object = ref.object;
+            while (object.type === 'tag') {
+              const {data: annotated} = await github.rest.git.getTag({
+                ...context.repo, tag_sha: object.sha,
+              });
+              object = annotated.object;
+            }
+            if (object.type !== 'commit' || object.sha !== process.env.RELEASE_COMMIT) {
+              throw new Error('The release tag moved while building; no assets were uploaded.');
+            }
+            const existing = await github.paginate(github.rest.repos.listReleaseAssets, {
+              ...context.repo, release_id: releaseId, per_page: 100,
+            });
+            const files = fs.readdirSync('dist').filter(name =>
+              name.endsWith('.whl') || name.endsWith('.tar.gz') || name === 'SHA256SUMS'
+            ).sort().map(name => {
+              const data = fs.readFileSync(`dist/${name}`);
+              const digest = `sha256:${crypto.createHash('sha256').update(data).digest('hex')}`;
+              const asset = existing.find(asset => asset.name === name);
+              if (asset && (asset.state !== 'uploaded' || asset.digest !== digest)) {
+                throw new Error(`Existing asset ${name} differs or cannot be verified; it was not overwritten.`);
+              }
+              return {name, data, asset};
+            });
+            for (const {name, data, asset} of files) {
+              if (asset) {
+                core.info(`Already attached with matching SHA256: ${name}`);
+                continue;
+              }
+              await github.rest.repos.uploadReleaseAsset({
+                ...context.repo, release_id: releaseId, name, data,
+                headers: {'content-type': 'application/octet-stream'},
+              });
+              core.info(`Attached ${name}`);
+            }
+            await core.summary.addHeading(`Release assets: ${tag}`)
+              .addRaw(`Built and checked commit ${process.env.RELEASE_COMMIT}.\n\n`)
+              .addLink('View release', release.html_url).write();
