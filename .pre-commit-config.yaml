@@ -1,0 +1,32 @@
+fail_fast: true
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  - repo: local
+    hooks:
+      - id: nox-py-standards
+        name: Check Python standards
+        entry: uv run --locked nox-py-standards check
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, pre-push]
+
+      - id: ruff
+        name: Ruff format and fix
+        entry: >-
+          bash -c 'uv run --locked ruff format . &&
+          uv run --locked ruff check --fix . &&
+          uv run --locked ruff format .'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, pre-push]
+
+      - id: pyright
+        name: Pyright
+        entry: uv run --locked pyright
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
