@@ -1,4 +1,4 @@
-# tests/test_tach_config.py
+# dev/tests/nox_tach_test/tach_config_test.py
 from __future__ import annotations
 
 from pathlib import Path

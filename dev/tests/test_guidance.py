@@ -1,11 +1,11 @@
-# tests/test_guidance.py
+# dev/tests/test_guidance.py
 from __future__ import annotations
 
 from pathlib import Path
 import re
 from urllib.parse import unquote, urlsplit
 
-_ROOT = Path(__file__).resolve().parents[1]
+_ROOT = Path(__file__).resolve().parents[2]
 _LINK = re.compile(r"\[[^\]\n]+\]\(([^\s)]+)\)")
 _FENCE = re.compile(r"^```[^\n]*\n.*?^```[ \t]*$", re.MULTILINE | re.DOTALL)
 

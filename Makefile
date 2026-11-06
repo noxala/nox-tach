@@ -17,7 +17,7 @@ test:
 	uv run --locked pytest
 
 docs-check:
-	uv run --locked pytest tests/test_guidance.py
+	uv run --locked pytest dev/tests/test_guidance.py
 
 policy-check:
 	uv run --locked tach check

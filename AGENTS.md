@@ -50,5 +50,4 @@ Start new work from current `master`; continue an existing PR on its branch.
 Request review from `denisgrenader` and enable auto-merge when supported.
 Update the owning guide when behavior, boundaries, or canonical commands change.
 Keep this file under 450 whitespace-delimited words; link focused detail instead
-of duplicating it. Internal module/test enforcement is tracked in
-[issue #5](https://github.com/noxala/nox-tach/issues/5).
+of duplicating it.

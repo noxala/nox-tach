@@ -1,4 +1,4 @@
-# tests/test_package.py
+# dev/tests/test_package.py
 from __future__ import annotations
 
 from email.parser import Parser
@@ -11,7 +11,7 @@ from zipfile import ZipFile
 
 import pytest
 
-_REPO_ROOT = Path(__file__).resolve().parents[1]
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _run(
@@ -84,7 +84,8 @@ def wheels(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
         with ZipFile(wheel) as archive:
             assert expected <= set(archive.namelist())
             assert not any(
-                name.startswith(("tests/", "tools/")) for name in archive.namelist()
+                name.startswith(("dev/", "tests/", "tools/"))
+                for name in archive.namelist()
             )
             (metadata_path,) = (
                 name
