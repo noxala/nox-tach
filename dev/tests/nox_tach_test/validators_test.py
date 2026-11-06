@@ -1,8 +1,5 @@
-# tests/test_policy.py
+# dev/tests/nox_tach_test/validators_test.py
 from __future__ import annotations
-
-import json
-from pathlib import Path
 
 import pytest
 
@@ -11,12 +8,6 @@ from nox_tach.config import (
     PolicyConfig,
     TestRootSpec as PolicyTestRootSpec,
     parse_policy_config,
-)
-from nox_tach.imports import find_blacklisted_imports
-from nox_tach.normalization import (
-    collapse_dependency_references,
-    normalize_policy_text,
-    normalize_tach_text,
 )
 from nox_tach.tach_config import parse_tach_config
 from nox_tach.validators import (
@@ -31,26 +22,156 @@ from nox_tach.validators import (
     validate_policy_modules_are_tach_modules,
     validate_tach_pattern_references_are_tach_modules,
     validate_test_dependencies,
+    validate_test_infra_does_not_depend_on_focused_tests,
+    validate_unique_mirrored_subjects,
     validate_whitelist_policies_only_narrow,
 )
+from tests._helpers import assert_raises_msg, tach_text
 
 
-def _tach_text(*modules: tuple[str, list[str]]) -> str:
-    body = "\n".join(
-        f"""\
+def test_test_infra_requires_explicit_dependency_surfaces() -> None:
+    with assert_raises_msg(ValueError, "dependency_whitelist") as exc_info:
+        parse_policy_config(
+            """\
 [[modules]]
-path = {json.dumps(module_path)}
-depends_on = {json.dumps(dependencies)}
-"""
-        for module_path, dependencies in modules
-    )
-    return f"""\
-source_roots = ["."]
-exact = true
-root_module = "forbid"
+path = "specs"
+test_root = true
+test_mirror_component_suffix = "_spec"
 
-{body}
+[[modules]]
+path = "specs.helpers"
+test_infra = true
 """
+        )
+
+    assert "external_lib_whitelist" in str(exc_info.value)
+
+
+def test_test_infra_accepts_explicit_empty_dependency_surfaces() -> None:
+    config = parse_policy_config(
+        """\
+[[modules]]
+path = "specs"
+test_root = true
+test_mirror_component_suffix = "_spec"
+
+[[modules]]
+path = "specs.helpers"
+test_infra = true
+dependency_whitelist = []
+external_lib_whitelist = []
+"""
+    )
+
+    assert config.is_test_infra("specs.helpers") is True
+
+
+def test_test_infra_cannot_depend_on_focused_test() -> None:
+    config = parse_policy_config(
+        """\
+[[modules]]
+path = "specs"
+test_root = true
+test_mirror_component_suffix = "_spec"
+
+[[modules]]
+path = "specs.helpers"
+test_infra = true
+dependency_whitelist = []
+external_lib_whitelist = []
+"""
+    )
+    tach = parse_tach_config(
+        tach_text(
+            ("specs", []),
+            ("specs.helpers", ["specs.billing_spec"]),
+            ("specs.billing_spec", []),
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="may not depend on ordinary focused tests"):
+        validate_test_infra_does_not_depend_on_focused_tests(
+            tach=tach,
+            config=config,
+        )
+
+
+def test_test_infra_may_depend_on_other_test_infra() -> None:
+    config = parse_policy_config(
+        """\
+[[modules]]
+path = "specs"
+test_root = true
+test_mirror_component_suffix = "_spec"
+
+[[modules]]
+path = "specs.helpers"
+test_infra = true
+dependency_whitelist = []
+external_lib_whitelist = []
+
+[[modules]]
+path = "specs.database_helpers"
+test_infra = true
+dependency_whitelist = []
+external_lib_whitelist = []
+"""
+    )
+    tach = parse_tach_config(
+        tach_text(
+            ("specs", []),
+            ("specs.helpers", ["specs.database_helpers"]),
+            ("specs.database_helpers", []),
+        )
+    )
+
+    validate_test_infra_does_not_depend_on_focused_tests(tach=tach, config=config)
+
+
+def test_one_test_root_cannot_map_two_modules_to_same_subject() -> None:
+    config = parse_policy_config(
+        """\
+[[modules]]
+path = "specs"
+test_root = true
+test_mirror_component_suffix = "_spec"
+"""
+    )
+    tach = parse_tach_config(
+        tach_text(
+            ("billing", []),
+            ("specs.billing", ["billing"]),
+            ("specs.billing_spec", ["billing"]),
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="multiple exact test modules"):
+        validate_unique_mirrored_subjects(tach=tach, config=config)
+
+
+def test_disjoint_test_roots_may_mirror_same_subject() -> None:
+    config = parse_policy_config(
+        """\
+[[modules]]
+path = "unit_specs"
+test_root = true
+test_mirror_component_suffix = "_spec"
+
+[[modules]]
+path = "integration_specs"
+test_root = true
+test_mirror_component_suffix = "_spec"
+"""
+    )
+    tach = parse_tach_config(
+        tach_text(
+            ("billing", []),
+            ("unit_specs.billing_spec", ["billing"]),
+            ("integration_specs.billing_spec", ["billing"]),
+        )
+    )
+
+    validate_unique_mirrored_subjects(tach=tach, config=config)
 
 
 def _module_spec(
@@ -91,40 +212,6 @@ external_lib_whitelist = []
     )
 
 
-def test_collapse_dependency_references_preserves_internal_references() -> None:
-    specs = (_module_spec("core", collapse_references=True),)
-
-    assert collapse_dependency_references(
-        module_path="core.foo",
-        dependencies=["core.lib", "models"],
-        module_specs=specs,
-    ) == ["core.lib", "models"]
-    assert collapse_dependency_references(
-        module_path="application",
-        dependencies=["core.lib", "core.hashing", "models"],
-        module_specs=specs,
-    ) == ["core.**", "models"]
-
-
-def test_find_blacklisted_imports_honors_external_whitelist(tmp_path: Path) -> None:
-    package = tmp_path / "pkg"
-    package.mkdir()
-    package.joinpath("__init__.py").write_text("import pytest\n", encoding="utf-8")
-
-    violations = find_blacklisted_imports(package, package="pkg")
-    assert len(violations) == 1
-    assert violations[0].imported_module == "pytest"
-
-    assert (
-        find_blacklisted_imports(
-            package,
-            package="pkg",
-            whitelist=frozenset({"pytest"}),
-        )
-        == ()
-    )
-
-
 @pytest.mark.parametrize(
     ("module_path", "expected"),
     [
@@ -153,7 +240,7 @@ def test_mirrored_subject_module_path(module_path: str, expected: str) -> None:
 def test_test_dependency_policy_allows_same_root_and_test_infra() -> None:
     config = _test_config()
     tach = parse_tach_config(
-        _tach_text(
+        tach_text(
             ("specs.financial_spec", ["specs.other_spec", "specs.helpers"]),
             ("specs.other_spec", []),
             ("specs.helpers", []),
@@ -166,7 +253,7 @@ def test_test_dependency_policy_allows_same_root_and_test_infra() -> None:
 def test_test_dependency_policy_rejects_external_focused_test_consumer() -> None:
     config = _test_config()
     tach = parse_tach_config(
-        _tach_text(
+        tach_text(
             ("diagnostics", ["specs.financial_spec"]),
             ("specs.financial_spec", []),
         )
@@ -179,7 +266,7 @@ def test_test_dependency_policy_rejects_external_focused_test_consumer() -> None
 def test_mirrored_test_policy_accepts_subject_transitive_cone() -> None:
     config = _test_config()
     tach = parse_tach_config(
-        _tach_text(
+        tach_text(
             ("core", []),
             ("financial.primitives", ["core"]),
             ("financial.loan", ["financial.primitives"]),
@@ -194,7 +281,7 @@ def test_mirrored_test_policy_accepts_subject_transitive_cone() -> None:
 def test_mirrored_test_policy_rejects_dependency_outside_subject_cone() -> None:
     config = _test_config()
     tach = parse_tach_config(
-        _tach_text(
+        tach_text(
             ("core", []),
             ("payments", []),
             ("financial.loan", ["core"]),
@@ -208,7 +295,7 @@ def test_mirrored_test_policy_rejects_dependency_outside_subject_cone() -> None:
 
 def test_non_dev_module_cannot_depend_on_dev_only_module() -> None:
     tach = parse_tach_config(
-        _tach_text(
+        tach_text(
             ("app", ["diagnostics"]),
             ("diagnostics", []),
         )
@@ -223,7 +310,7 @@ def test_non_dev_module_cannot_depend_on_dev_only_module() -> None:
 
 def test_dependency_whitelist_implicitly_allows_its_own_subtree() -> None:
     tach = parse_tach_config(
-        _tach_text(
+        tach_text(
             ("core", ["core.lib"]),
             ("core.lib", ["core.lib.deep"]),
             ("core.lib.deep", []),
@@ -237,7 +324,7 @@ def test_dependency_whitelist_implicitly_allows_its_own_subtree() -> None:
 
 def test_child_dependency_whitelist_establishes_narrower_self_subtree() -> None:
     tach = parse_tach_config(
-        _tach_text(
+        tach_text(
             ("core", ["core.hashing"]),
             ("core.hashing", []),
             ("core.lib", ["core.hashing"]),
@@ -254,7 +341,7 @@ def test_child_dependency_whitelist_establishes_narrower_self_subtree() -> None:
 
 def test_child_whitelist_can_retain_parent_subtree_access() -> None:
     tach = parse_tach_config(
-        _tach_text(
+        tach_text(
             ("core", ["core.hashing"]),
             ("core.hashing", []),
             ("core.lib", ["core.hashing"]),
@@ -287,7 +374,7 @@ def test_child_dependency_whitelist_cannot_retain_permission_parent_lacks() -> N
 
 def test_child_parents_whitelist_establishes_narrower_self_subtree() -> None:
     tach = parse_tach_config(
-        _tach_text(
+        tach_text(
             ("core.hashing", ["core.lib"]),
             ("core.lib", []),
         )
@@ -303,7 +390,7 @@ def test_child_parents_whitelist_establishes_narrower_self_subtree() -> None:
 
 def test_child_parents_whitelist_can_explicitly_retain_parent_subtree_caller() -> None:
     tach = parse_tach_config(
-        _tach_text(
+        tach_text(
             ("core.hashing", ["core.lib"]),
             ("core.lib", []),
         )
@@ -322,7 +409,7 @@ def test_child_parents_whitelist_can_explicitly_retain_parent_subtree_caller() -
 
 def test_dependency_blacklist_is_inherited_and_transitive() -> None:
     tach = parse_tach_config(
-        _tach_text(
+        tach_text(
             ("app", ["bridge"]),
             ("app.child", []),
             ("bridge", ["tools"]),
@@ -357,7 +444,7 @@ def test_descendant_whitelist_cannot_reopen_inherited_blacklist() -> None:
 
 
 def test_policy_paths_and_pattern_roots_must_be_exact_tach_modules() -> None:
-    tach = parse_tach_config(_tach_text(("core", []), ("client", [])))
+    tach = parse_tach_config(tach_text(("core", []), ("client", [])))
 
     with pytest.raises(RuntimeError, match="Missing modules: 'missing'"):
         validate_policy_modules_are_tach_modules(
@@ -387,56 +474,3 @@ def test_tach_policy_configuration_runs_all_configuration_checks() -> None:
                 ),
             )
         )
-
-
-def test_normalize_tach_groups_zero_dep_prod_then_prod_then_dev() -> None:
-    text = _tach_text(
-        ("dev.zero", []),
-        ("zeta", ["alpha"]),
-        ("alpha", []),
-        ("beta", []),
-        ("dev.work", ["alpha"]),
-    )
-    tach = parse_tach_config(text)
-    config = PolicyConfig(
-        modules=(_module_spec("dev", dev_only=True),),
-    )
-
-    rendered = normalize_tach_text(text, tach=tach, config=config)
-
-    assert rendered.index('path = "alpha"') < rendered.index('path = "beta"')
-    assert rendered.index('path = "beta"') < rendered.index('path = "zeta"')
-    assert rendered.index('path = "zeta"') < rendered.index('path = "dev.work"')
-    assert rendered.index('path = "dev.work"') < rendered.index('path = "dev.zero"')
-
-
-def test_normalize_tach_como_groups_prod_then_effective_dev_only() -> None:
-    text = """\
-[[modules]]
-path = "test.helpers"
-test_infra = true
-dependency_whitelist = []
-external_lib_whitelist = []
-
-[[modules]]
-path = "zeta"
-
-[[modules]]
-path = "tools"
-dev_only = true
-
-[[modules]]
-path = "alpha"
-
-[[modules]]
-path = "test"
-test_root = true
-test_mirror_component_suffix = "_test"
-"""
-
-    rendered = normalize_policy_text(text)
-
-    assert rendered.index('path = "alpha"') < rendered.index('path = "zeta"')
-    assert rendered.index('path = "zeta"') < rendered.index('path = "test"')
-    assert rendered.index('path = "test"') < rendered.index('path = "test.helpers"')
-    assert rendered.index('path = "test.helpers"') < rendered.index('path = "tools"')

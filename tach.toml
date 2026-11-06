@@ -1,4 +1,4 @@
-source_roots = ["src"]
+source_roots = ["src", "dev"]
 exact = true
 root_module = "forbid"
 
@@ -7,3 +7,85 @@ root_module = "forbid"
 [[modules]]
 path = "nox_tach"
 depends_on = []
+
+[[modules]]
+path = "nox_tach.patterns"
+depends_on = []
+
+
+# --- Production modules: first-party dependencies ---
+
+[[modules]]
+path = "nox_tach.__main__"
+depends_on = ["nox_tach.runner"]
+
+[[modules]]
+path = "nox_tach.config"
+depends_on = ["nox_tach.patterns"]
+
+[[modules]]
+path = "nox_tach.imports"
+depends_on = ["nox_tach.config", "nox_tach.tach_config"]
+
+[[modules]]
+path = "nox_tach.normalization"
+depends_on = ["nox_tach.config", "nox_tach.patterns", "nox_tach.tach_config"]
+
+[[modules]]
+path = "nox_tach.ruff_config"
+depends_on = ["nox_tach.tach_config"]
+
+[[modules]]
+path = "nox_tach.runner"
+depends_on = ["nox_tach.config", "nox_tach.imports", "nox_tach.normalization", "nox_tach.ruff_config", "nox_tach.tach_config", "nox_tach.validators"]
+
+[[modules]]
+path = "nox_tach.tach_config"
+depends_on = ["nox_tach.patterns"]
+
+[[modules]]
+path = "nox_tach.validators"
+depends_on = ["nox_tach.config", "nox_tach.patterns", "nox_tach.tach_config"]
+
+
+# --- Development-only modules ---
+
+[[modules]]
+path = "tests"
+depends_on = ["nox_tach.config", "nox_tach.runner", "nox_tach.tach_config", "nox_tach.validators"]
+
+[[modules]]
+path = "tests._helpers"
+depends_on = []
+
+[[modules]]
+path = "tests.nox_tach_test"
+depends_on = []
+
+[[modules]]
+path = "tests.nox_tach_test.config_test"
+depends_on = ["nox_tach.config", "tests._helpers"]
+
+[[modules]]
+path = "tests.nox_tach_test.imports_test"
+depends_on = ["nox_tach.imports"]
+
+[[modules]]
+path = "tests.nox_tach_test.normalization_test"
+depends_on = ["nox_tach.config", "nox_tach.normalization", "nox_tach.tach_config", "tests._helpers"]
+
+[[modules]]
+path = "tests.nox_tach_test.ruff_config_test"
+depends_on = ["nox_tach.ruff_config", "nox_tach.tach_config", "tests._helpers"]
+
+[[modules]]
+path = "tests.nox_tach_test.runner_test"
+depends_on = ["nox_tach.config", "nox_tach.imports", "nox_tach.runner", "nox_tach.tach_config", "tests._helpers"]
+
+[[modules]]
+path = "tests.nox_tach_test.tach_config_test"
+depends_on = ["nox_tach.tach_config"]
+
+[[modules]]
+path = "tests.nox_tach_test.validators_test"
+depends_on = ["nox_tach.config", "nox_tach.tach_config", "nox_tach.validators", "tests._helpers"]

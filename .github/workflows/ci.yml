@@ -65,3 +65,26 @@ jobs:
           cd "$install_root"
           env -u PYTHONPATH "$install_root/venv/bin/python" -I -m nox_tach --help
           env -u PYTHONPATH "$install_root/venv/bin/nox-tach" --help
+
+  ci-gate:
+    name: ci-gate
+    needs: [checks]
+    if: ${{ always() }}
+    runs-on: self-hosted
+    timeout-minutes: 2
+    steps:
+      - name: Require every CI dependency to succeed
+        env:
+          DEPENDENCY_RESULTS: ${{ join(needs.*.result, ' ') }}
+        shell: bash
+        run: |
+          if [[ -z "$DEPENDENCY_RESULTS" ]]; then
+            echo "No CI results were provided."
+            exit 1
+          fi
+          for result in $DEPENDENCY_RESULTS; do
+            if [[ "$result" != "success" ]]; then
+              echo "CI dependency did not succeed: $result"
+              exit 1
+            fi
+          done

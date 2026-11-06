@@ -1,4 +1,4 @@
-# tests/test_ruff_config.py
+# dev/tests/nox_tach_test/ruff_config_test.py
 from __future__ import annotations
 
 from datetime import UTC, datetime

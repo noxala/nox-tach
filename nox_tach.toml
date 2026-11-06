@@ -1,4 +1,4 @@
-# The installed engine may import only its own subtree and the standard library.
+# The installed engine is stdlib-only; each child narrows its outgoing surface.
 
 # --- Production dependency policy ---
 
@@ -6,3 +6,55 @@
 path = "nox_tach"
 dependency_whitelist = []
 external_lib_whitelist = []
+
+[[modules]]
+path = "nox_tach.__main__"
+dependency_whitelist = ["nox_tach.runner"]
+
+[[modules]]
+path = "nox_tach.config"
+dependency_whitelist = ["nox_tach.patterns"]
+
+[[modules]]
+path = "nox_tach.imports"
+dependency_whitelist = ["nox_tach.config", "nox_tach.tach_config"]
+
+[[modules]]
+path = "nox_tach.normalization"
+dependency_whitelist = ["nox_tach.config", "nox_tach.patterns", "nox_tach.tach_config"]
+
+[[modules]]
+path = "nox_tach.patterns"
+dependency_whitelist = []
+
+[[modules]]
+path = "nox_tach.ruff_config"
+dependency_whitelist = ["nox_tach.tach_config"]
+
+[[modules]]
+path = "nox_tach.runner"
+dependency_whitelist = ["nox_tach.config", "nox_tach.imports", "nox_tach.normalization", "nox_tach.ruff_config", "nox_tach.tach_config", "nox_tach.validators"]
+
+[[modules]]
+path = "nox_tach.tach_config"
+dependency_whitelist = ["nox_tach.patterns"]
+
+[[modules]]
+path = "nox_tach.validators"
+dependency_whitelist = ["nox_tach.config", "nox_tach.patterns", "nox_tach.tach_config"]
+
+
+# --- Development-only dependency policy ---
+
+[[modules]]
+path = "tests"
+test_root = true
+test_mirror_component_suffix = "_test"
+dependency_whitelist = ["nox_tach", "nox_tach.**"]
+external_lib_whitelist = ["pytest"]
+
+[[modules]]
+path = "tests._helpers"
+test_infra = true
+dependency_whitelist = []
+external_lib_whitelist = ["pytest"]

@@ -7,18 +7,18 @@ Policy meaning belongs in [POLICY.md](POLICY.md).
 ## Ownership map
 
 Paths in the implementation column are under `src/nox_tach/`; test links are
-under `tests/`. Cross-cutting tests intentionally exercise several owners.
+under `dev/tests/`. Cross-cutting tests intentionally exercise several owners.
 
 | Responsibility | Implementation | Focused tests |
 | --- | --- | --- |
-| Policy models, parsing, declared/effective roles | [config.py](../src/nox_tach/config.py) | [policy config](../tests/test_policy_config.py), [test roles](../tests/test_test_role_tightening.py) |
-| Exact/child/recursive patterns | [patterns.py](../src/nox_tach/patterns.py) | [policy](../tests/test_policy.py), [collapse](../tests/test_collapse_blacklist.py) |
-| Tach models, source resolution, dependency traversal | [tach_config.py](../src/nox_tach/tach_config.py) | [Tach config](../tests/test_tach_config.py), [policy](../tests/test_policy.py) |
-| Static external-import restrictions | [imports.py](../src/nox_tach/imports.py) | [policy](../tests/test_policy.py), [runner](../tests/test_runner.py) |
-| Configuration and graph-policy enforcement | [validators.py](../src/nox_tach/validators.py) | [policy](../tests/test_policy.py), [test roles](../tests/test_test_role_tightening.py) |
-| TOML grouping, sorting, reference collapsing | [normalization.py](../src/nox_tach/normalization.py) | [normalization](../tests/test_normalization_sections.py), [collapse](../tests/test_collapse_blacklist.py) |
-| Ruff first-party projection | [ruff_config.py](../src/nox_tach/ruff_config.py) | [Ruff config](../tests/test_ruff_config.py) |
-| File I/O, validation order, CLI | [runner.py](../src/nox_tach/runner.py), [__main__.py](../src/nox_tach/__main__.py) | [runner](../tests/test_runner.py), [installed artifacts](../tests/test_package.py) |
+| Policy models, parsing, declared/effective roles | [config.py](../src/nox_tach/config.py) | [policy config](../dev/tests/nox_tach_test/config_test.py) |
+| Exact/child/recursive patterns | [patterns.py](../src/nox_tach/patterns.py) | [policy](../dev/tests/nox_tach_test/validators_test.py), [collapse](../dev/tests/nox_tach_test/normalization_test.py) |
+| Tach models, source resolution, dependency traversal | [tach_config.py](../src/nox_tach/tach_config.py) | [Tach config](../dev/tests/nox_tach_test/tach_config_test.py), [policy](../dev/tests/nox_tach_test/validators_test.py) |
+| Static external-import restrictions | [imports.py](../src/nox_tach/imports.py) | [imports](../dev/tests/nox_tach_test/imports_test.py), [runner](../dev/tests/nox_tach_test/runner_test.py) |
+| Configuration and graph-policy enforcement | [validators.py](../src/nox_tach/validators.py) | [policy and test roles](../dev/tests/nox_tach_test/validators_test.py) |
+| TOML grouping, sorting, reference collapsing | [normalization.py](../src/nox_tach/normalization.py) | [normalization and collapse](../dev/tests/nox_tach_test/normalization_test.py) |
+| Ruff first-party projection | [ruff_config.py](../src/nox_tach/ruff_config.py) | [Ruff config](../dev/tests/nox_tach_test/ruff_config_test.py) |
+| File I/O, validation order, CLI | [runner.py](../src/nox_tach/runner.py), [__main__.py](../src/nox_tach/__main__.py) | [runner](../dev/tests/nox_tach_test/runner_test.py), [installed artifacts](../dev/tests/test_package.py) |
 
 Keep orchestration and writes in the runner. Reuse canonical models and pattern
 helpers rather than introducing a second interpretation of policy.
@@ -72,8 +72,23 @@ tach: TachConfig = parse_tach_config(Path("tach.toml").read_text())
 
 ## Current repository enforcement
 
-[tach.toml](../tach.toml) currently declares one `nox_tach` boundary under `src`.
-[nox_tach.toml](../nox_tach.toml) makes it stdlib-only. Internal module edges and
-this repository's tests are not yet separate enforced boundaries.
-[Issue #5](https://github.com/noxala/nox-tach/issues/5) tracks that follow-up;
-the ownership map above must not be mistaken for an already enforced graph.
+[tach.toml](../tach.toml) declares every production module separately, with exact
+imports discovered by native Tach. [nox_tach.toml](../nox_tach.toml) limits each
+module's outgoing surface, so syncing a new import cannot silently authorize it.
+The package remains stdlib-only, and production cannot depend on dev-only code.
+
+Source roots `src` and `dev` are disjoint. Tests live under `dev/tests`; the
+`tests` boundary aggregates normalization integration, packaging,
+guidance, and repository-policy checks. Aggregate tests need no artificial subject.
+
+Focused boundaries under `dev/tests/nox_tach_test` use the `_test` mirror suffix:
+`config_test.py` mirrors `nox_tach.config`, for example. Each may import its subject,
+that subject's downstream dependency cone, and explicitly declared infrastructure.
+Keep orchestration tests out of a lower-level subject's boundary.
+`tests._helpers` is narrowly declared infrastructure with no first-party
+permissions and only pytest as an external dependency. Exact edges and roles live
+in the TOML files; update them deliberately when responsibilities change.
+
+[Repository-policy regressions](../dev/tests/test_repository_policy.py) prove that
+native Tach rejects an undeclared internal import and that policy still rejects
+prohibited internal and focused-test edges after dependency synchronization.
